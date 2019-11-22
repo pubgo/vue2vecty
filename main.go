@@ -1,7 +1,7 @@
 package main
 
-import "github.com/pubgo/vue2vecty/vue2vecty"
+import "github.com/pubgo/vue2vecty/cmds"
 
 func main() {
-	vue2vecty.NewTranspiler()
+	cmds.Execute()
 }
