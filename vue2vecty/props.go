@@ -1,15 +1,15 @@
 package vue2vecty
 
-// BoolProps is a map of the boolean properties in a template to their
-// vecty names
-var BoolProps = map[string]string{
+// boolProps
+// a map of the boolean properties in a template to their vecty names
+var boolProps = map[string]string{
 	"autofocus": "Autofocus",
 	"checked":   "Checked",
 }
 
-// StringProps is a map of the string properties in a template to their
-// vecty names
-var StringProps = map[string]string{
+// StringProps
+// a map of the string properties in a template to their vecty names
+var stringProps = map[string]string{
 	"for":         "For",
 	"href":        "Href",
 	"id":          "ID",
@@ -18,8 +18,9 @@ var StringProps = map[string]string{
 	"value":       "Value",
 }
 
-// TypeProps is a map of the types in a template to their vecty names
-var TypeProps = map[string]string{
+// TypeProps
+// a map of the types in a template to their vecty names
+var typeProps = map[string]string{
 	"button":         "TypeButton",
 	"checkbox":       "TypeCheckbox",
 	"color":          "TypeColor",

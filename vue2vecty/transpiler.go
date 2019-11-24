@@ -19,19 +19,16 @@ import (
 	"github.com/dave/jennifer/jen"
 )
 
-const (
-	vectyPackage = "github.com/gopherjs/vecty/elem"
-)
-
 var callRegexp = regexp.MustCompile(`{vecty-call:([a-zA-Z0-9_\-]+)}`)
 var fieldRegexp = regexp.MustCompile(`{vecty-field:([a-zA-Z0-9_\-]+})`)
 var EOT = errors.New("end of tag")
 
 func NewTranspiler(r io.ReadCloser, createStruct bool, appPackage, componentName, packageName string) *Transpiler {
 	s := &Transpiler{
-		reader:        r,
-		createStruct:  createStruct,
-		appPackage:    appPackage,
+		reader:       r,
+		createStruct: createStruct,
+		appPackage:   appPackage,
+
 		packageName:   packageName,
 		componentName: componentName,
 	}
@@ -84,7 +81,7 @@ func (s *Transpiler) transcode() {
 		switch token := token.(type) {
 		case xml.StartElement:
 			tag := token.Name.Local
-			vectyFunction, ok := ElemNames[tag]
+			vectyFunction, ok := elemNames[tag]
 			_vectyPackage := vectyPackage
 			vectyParamater := ""
 			var ce *jen.Statement
@@ -92,7 +89,7 @@ func (s *Transpiler) transcode() {
 				if strings.HasPrefix(token.Name.Space, "components") {
 					// not sure if we need this?
 					componentName := strings.TrimLeft(tag, "components.")
-					ce = ComponentElement(s.appPackage, componentName, &token)
+					ce = componentElement(s.appPackage, componentName, &token)
 					vectyFunction = ""
 				} else {
 					vectyFunction = "Tag"
@@ -138,6 +135,7 @@ func (s *Transpiler) transcode() {
 										}
 									}
 								})
+
 							case strings.HasPrefix(v.Name.Local, "data-"):
 								attribute := strings.TrimPrefix(v.Name.Local, "data-")
 								g.Qual("github.com/gopherjs/vecty", "Data").Call(
@@ -145,20 +143,21 @@ func (s *Transpiler) transcode() {
 									jen.Lit(v.Value),
 								)
 
-							case BoolProps[v.Name.Local] != "":
+							case boolProps[v.Name.Local] != "":
 								value := v.Value == "true"
-								g.Qual("github.com/gopherjs/vecty/prop", BoolProps[v.Name.Local]).Call(
+								g.Qual("github.com/gopherjs/vecty/prop", boolProps[v.Name.Local]).Call(
 									jen.Lit(value),
 								)
-							case StringProps[v.Name.Local] != "":
+
+							case stringProps[v.Name.Local] != "":
 								if strings.HasPrefix(v.Value, "{vecty-field:") {
 									field := strings.TrimLeft(v.Value, "{vecty-field:")
 									field = field[:len(field)-1]
-									g.Qual("github.com/gopherjs/vecty/prop", StringProps[v.Name.Local]).Call(
+									g.Qual("github.com/gopherjs/vecty/prop", stringProps[v.Name.Local]).Call(
 										jen.Id("p").Dot(field),
 									)
 								} else {
-									g.Qual("github.com/gopherjs/vecty/prop", StringProps[v.Name.Local]).Call(
+									g.Qual("github.com/gopherjs/vecty/prop", stringProps[v.Name.Local]).Call(
 										jen.Lit(v.Value),
 									)
 								}
@@ -175,13 +174,12 @@ func (s *Transpiler) transcode() {
 								g.Qual("github.com/gopherjs/vecty", "Namespace").Call(
 									jen.Lit(v.Value),
 								)
-							case v.Name.Local == "type" && TypeProps[v.Value] != "":
+							case v.Name.Local == "type" && typeProps[v.Value] != "":
 								g.Qual("github.com/gopherjs/vecty/prop", "Type").Call(
-									jen.Qual("github.com/gopherjs/vecty/prop", TypeProps[v.Value]),
+									jen.Qual("github.com/gopherjs/vecty/prop", typeProps[v.Value]),
 								)
 
-							case v.Name.Local=="v-for":
-
+							case v.Name.Local == "v-for":
 
 							default:
 								g.Qual("github.com/gopherjs/vecty", "Attribute").Call(
@@ -323,6 +321,7 @@ func (s *Transpiler) transcode() {
 		"github.com/gopherjs/vecty/style":               "style",
 		"_ github.com/pubgo/vapper/examples/components": "components",
 	})
+	file.Func().Call()
 	var elements []jen.Code
 	for {
 		c, err := _transcode(decoder)
