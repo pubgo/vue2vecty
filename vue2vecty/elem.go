@@ -1,7 +1,7 @@
 package vue2vecty
 
-// ElemNames is a map of the elements in a template to their Vecty names
-var ElemNames = map[string]string{
+// elemNames is a map of the elements in a template to their Vecty names
+var elemNames = map[string]string{
 	"a":          "Anchor",
 	"abbr":       "Abbreviation",
 	"address":    "Address",

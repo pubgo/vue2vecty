@@ -27,10 +27,9 @@ var callRegexp = regexp.MustCompile(`{vecty-call:([a-zA-Z0-9_\-]+)}`)
 var fieldRegexp = regexp.MustCompile(`{vecty-field:([a-zA-Z0-9_\-]+})`)
 var EOT = errors.New("end of tag")
 
-func NewTranspiler(r io.ReadCloser, createStruct bool, appPackage, componentName, packageName string) *Transpiler {
+func NewTranspiler(r io.ReadCloser, appPackage, componentName, packageName string) *Transpiler {
 	s := &Transpiler{
 		reader:        r,
-		createStruct:  createStruct,
 		appPackage:    appPackage,
 		packageName:   packageName,
 		componentName: componentName,
@@ -43,7 +42,6 @@ func NewTranspiler(r io.ReadCloser, createStruct bool, appPackage, componentName
 
 type Transpiler struct {
 	reader        io.ReadCloser
-	createStruct  bool
 	appPackage    string
 	componentName string
 	packageName   string
@@ -60,12 +58,23 @@ func (s *Transpiler) Code() string {
 	return s.code
 }
 
-func (s *Transpiler) transcode() {
-	// check for valid HTML
-	_, err := template.New("syntaxCheck").Parse(s.html)
-	xerror.PanicM(err, "template parse error")
+func (s *Transpiler) transcode() (err error) {
+	defer xerror.RespErr(&err)
 
-	decoder := xml.NewDecoder(bytes.NewBufferString(s.html))
+	// check for valid HTML
+	xerror.PanicErr(template.New("syntaxCheck").Parse(s.html))
+
+	file := jen.NewFile(s.packageName)
+	file.PackageComment("This file was created with https://github.com/pubgo/factor")
+	file.PackageComment("using https://jsgo.io/dave/html2vecty")
+	file.ImportNames(map[string]string{
+		"github.com/gopherjs/vecty":                     "vecty",
+		"github.com/gopherjs/vecty/elem":                "elem",
+		"github.com/gopherjs/vecty/prop":                "prop",
+		"github.com/gopherjs/vecty/event":               "event",
+		"github.com/gopherjs/vecty/style":               "style",
+		"_ github.com/pubgo/vapper/examples/components": "components",
+	})
 
 	call := jen.Options{
 		Close:     ")",
@@ -74,25 +83,24 @@ func (s *Transpiler) transcode() {
 		Separator: ",",
 	}
 
+	decoder := xml.NewDecoder(bytes.NewBufferString(s.html))
+
 	var _transcode func(*xml.Decoder) ([]jen.Code, error)
 	_transcode = func(decoder *xml.Decoder) (code []jen.Code, err error) {
-		token, err := decoder.Token()
-		if err != nil {
-			return nil, err
-		}
+		defer xerror.RespErr(&err)
 
+		token := xerror.PanicErr(decoder.Token()).(xml.Token)
 		switch token := token.(type) {
 		case xml.StartElement:
 			tag := token.Name.Local
-			vectyFunction, ok := ElemNames[tag]
+			vectyFunction, ok := elemNames[tag]
+
 			_vectyPackage := vectyPackage
 			vectyParamater := ""
 			var ce *jen.Statement
 			if !ok {
-				if strings.HasPrefix(token.Name.Space, "components") {
-					// not sure if we need this?
-					componentName := strings.TrimLeft(tag, "components.")
-					ce = ComponentElement(s.appPackage, componentName, &token)
+				if strings.HasPrefix(token.Name.Space, "c:") {
+					ce = componentElement(file, s.appPackage, &token)
 					vectyFunction = ""
 				} else {
 					vectyFunction = "Tag"
@@ -100,16 +108,40 @@ func (s *Transpiler) transcode() {
 					vectyParamater = tag
 				}
 			}
-			var outer error
 
+			_g := func(s *jen.Statement, value string) *jen.Statement {
+				vs := strings.Split(value, "in")
+				_var := vs[0]
+				_data := vs[1]
+				return jen.Qual("github.com/gopherjs/vecty", "Map").CallFunc(func(g *jen.Group) {
+					g.Id(_data)
+					g.Func().Params(jen.Id("i").Int()).Qual("github.com/gopherjs/vecty", "Tag").Block(
+						jen.Id(_var).Op(":=").Id(_data).Index(jen.Id("i")),
+						jen.Return(s),
+					)
+				})
+			}
+
+			var outer error
 			q := jen.Qual(_vectyPackage, vectyFunction).CustomFunc(call, func(g *jen.Group) {
 				if vectyParamater != "" {
 					g.Lit(vectyParamater)
 				}
+
 				if ce == nil && len(token.Attr) > 0 {
 					g.Qual("github.com/gopherjs/vecty", "Markup").CustomFunc(call, func(g *jen.Group) {
 						for _, v := range token.Attr {
+							space := v.Name.Space
+							local := v.Name.Local
 							switch {
+							case local == "v-if":
+								file.ImportName("github.com/gopherjs/vecty", "If")
+								g.Qual("github.com/gopherjs/vecty", "MarkupIf")
+							case local == "v-for":
+								continue
+							case local == "v-model":
+							case space == "v-bind" || space == "v":
+							case local == "v-on":
 							case v.Name.Local == "style":
 								css, err := parser.ParseDeclarations(v.Value)
 								if err != nil {
@@ -145,20 +177,20 @@ func (s *Transpiler) transcode() {
 									jen.Lit(v.Value),
 								)
 
-							case BoolProps[v.Name.Local] != "":
+							case boolProps[v.Name.Local] != "":
 								value := v.Value == "true"
-								g.Qual("github.com/gopherjs/vecty/prop", BoolProps[v.Name.Local]).Call(
+								g.Qual("github.com/gopherjs/vecty/prop", boolProps[v.Name.Local]).Call(
 									jen.Lit(value),
 								)
-							case StringProps[v.Name.Local] != "":
+							case stringProps[v.Name.Local] != "":
 								if strings.HasPrefix(v.Value, "{vecty-field:") {
 									field := strings.TrimLeft(v.Value, "{vecty-field:")
 									field = field[:len(field)-1]
-									g.Qual("github.com/gopherjs/vecty/prop", StringProps[v.Name.Local]).Call(
+									g.Qual("github.com/gopherjs/vecty/prop", stringProps[v.Name.Local]).Call(
 										jen.Id("p").Dot(field),
 									)
 								} else {
-									g.Qual("github.com/gopherjs/vecty/prop", StringProps[v.Name.Local]).Call(
+									g.Qual("github.com/gopherjs/vecty/prop", stringProps[v.Name.Local]).Call(
 										jen.Lit(v.Value),
 									)
 								}
@@ -175,13 +207,12 @@ func (s *Transpiler) transcode() {
 								g.Qual("github.com/gopherjs/vecty", "Namespace").Call(
 									jen.Lit(v.Value),
 								)
-							case v.Name.Local == "type" && TypeProps[v.Value] != "":
+							case v.Name.Local == "type" && typeProps[v.Value] != "":
 								g.Qual("github.com/gopherjs/vecty/prop", "Type").Call(
-									jen.Qual("github.com/gopherjs/vecty/prop", TypeProps[v.Value]),
+									jen.Qual("github.com/gopherjs/vecty/prop", typeProps[v.Value]),
 								)
 
-							case v.Name.Local=="v-for":
-
+							case v.Name.Local == "v-for":
 
 							default:
 								g.Qual("github.com/gopherjs/vecty", "Attribute").Call(
@@ -192,6 +223,7 @@ func (s *Transpiler) transcode() {
 						}
 					})
 				}
+
 				for {
 					c, err := _transcode(decoder)
 					if err != nil {
@@ -206,12 +238,30 @@ func (s *Transpiler) transcode() {
 					}
 				}
 			})
+
 			if outer != nil {
 				return nil, outer
 			}
+
 			if ce != nil {
 				return []jen.Code{ce}, nil
 			}
+
+			for _, v := range token.Attr {
+				// 处理 v-for
+				if v.Name.Space == "" && v.Name.Local == "v-for" {
+					return []jen.Code{_g(q, v.Value)}, nil
+				}
+
+				// 处理 v-if
+				if v.Name.Space == "" && v.Name.Local == "v-if" {
+					return []jen.Code{_g(q, v.Value)}, nil
+				}
+
+				// 处理 {}
+				// 处理 {{  }}
+			}
+
 			return []jen.Code{q}, nil
 		case xml.CharData:
 			str := string(token)
@@ -311,18 +361,6 @@ func (s *Transpiler) transcode() {
 		}
 		return nil, nil
 	}
-
-	file := jen.NewFile(s.packageName)
-	file.PackageComment("This file was created with https://github.com/pubgo/factor")
-	file.PackageComment("using https://jsgo.io/dave/html2vecty")
-	file.ImportNames(map[string]string{
-		"github.com/gopherjs/vecty":                     "vecty",
-		"github.com/gopherjs/vecty/elem":                "elem",
-		"github.com/gopherjs/vecty/prop":                "prop",
-		"github.com/gopherjs/vecty/event":               "event",
-		"github.com/gopherjs/vecty/style":               "style",
-		"_ github.com/pubgo/vapper/examples/components": "components",
-	})
 	var elements []jen.Code
 	for {
 		c, err := _transcode(decoder)
@@ -331,18 +369,13 @@ func (s *Transpiler) transcode() {
 				break
 			}
 			s.code = fmt.Sprintf("%s", err)
-			return
+			//return
 		}
 		if c != nil {
 			elements = append(elements, c...)
 		}
 	}
 
-	if s.createStruct {
-		file.Type().Id(s.componentName).Struct(
-			jen.Qual("github.com/gopherjs/vecty", "Core"),
-		)
-	}
 	if s.packageName == "routes" || s.packageName == "pages" {
 		file.Func().Params(jen.Id("p").Op("*").Id(s.componentName)).Id("Render").Params().Qual("github.com/gopherjs/vecty", "ComponentOrHTML").Block(
 			jen.Qual("github.com/gopherjs/vecty", "SetTitle").Call(
