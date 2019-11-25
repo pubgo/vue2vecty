@@ -20,6 +20,7 @@ var stringProps = map[string]string{
 
 // TypeProps
 // a map of the types in a template to their vecty names
+// typeProps is a map of the types in a template to their vecty names
 var typeProps = map[string]string{
 	"button":         "TypeButton",
 	"checkbox":       "TypeCheckbox",
