@@ -1,10 +1,21 @@
+// +build js
+
 package views
 
 import (
+	"fmt"
 	"github.com/gopherjs/vecty"
 	"github.com/gopherjs/vecty/elem"
+	"github.com/gopherjs/vecty/event"
 	"github.com/gopherjs/vecty/prop"
+	"honnef.co/go/js/dom/v2"
 )
+
+func init() {
+	dom.GetWindow().AddEventListener("test-ssss", false, func(e dom.Event) {
+		fmt.Println(e.Target().TextContent())
+	})
+}
 
 func (t *Test) Render() vecty.ComponentOrHTML {
 	return elem.Body(
@@ -19,13 +30,21 @@ func (t *Test) Render() vecty.ComponentOrHTML {
 				e = append(e, elem.Heading2(vecty.Text("Class attributes"), vecty.Markup(
 					vecty.Style("border", t.Data[k]),
 					vecty.Style("color", "red!important"),
-				), ))
+				)))
 			}
 			return
 		}(),
+		vecty.If(len("") > 0, elem.Heading2(vecty.Text("Class attributes"))),
+		&Test{},
 		elem.Paragraph(
 			vecty.Markup(
 				vecty.Class("foo", "bar", "baz"),
+				vecty.MarkupIf(len("") > 0, vecty.Class("foo", "bar", "baz")),
+				event.Click(func(i *vecty.Event) {
+					dom.GetWindow().DispatchEvent(dom.WrapEvent(i.Target))
+					dom.WrapEvent(i.Target).PreventDefault()
+
+				}),
 			),
 		),
 		elem.Heading2(
