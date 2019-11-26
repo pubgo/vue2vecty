@@ -7,5 +7,6 @@ import (
 type Test struct {
 	vecty.Core
 
+	Data []string
 	Slot []vecty.MarkupOrChild
 }

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/pubgo/g/xerror"
-	"html/template"
 	"io/ioutil"
 	"regexp"
 
@@ -23,7 +22,9 @@ var callRegexp = regexp.MustCompile(`{vecty-call:([a-zA-Z0-9_\-]+)}`)
 var fieldRegexp = regexp.MustCompile(`{vecty-field:([a-zA-Z0-9_\-]+})`)
 var EOT = errors.New("end of tag")
 
-func NewTranspiler(r io.ReadCloser, appPackage, componentName, packageName string) *Transpiler {
+func NewTranspiler(r io.Reader, appPackage, componentName, packageName string) *Transpiler {
+	defer xerror.Assert()
+
 	s := &Transpiler{
 		reader:        r,
 		appPackage:    appPackage,
@@ -31,13 +32,12 @@ func NewTranspiler(r io.ReadCloser, appPackage, componentName, packageName strin
 		componentName: componentName,
 	}
 	s.read()
-	s.transcode()
-
+	xerror.PanicM(s.transcode(), "transcode error")
 	return s
 }
 
 type Transpiler struct {
-	reader        io.ReadCloser
+	reader        io.Reader
 	appPackage    string
 	componentName string
 	packageName   string
@@ -57,19 +57,15 @@ func (s *Transpiler) Code() string {
 func (s *Transpiler) transcode() (err error) {
 	defer xerror.RespErr(&err)
 
-	// check for valid HTML
-	xerror.PanicErr(template.New("syntaxCheck").Parse(s.html))
-
 	file := jen.NewFile(s.packageName)
 	file.PackageComment("This file was created with https://github.com/pubgo/factor")
 	file.PackageComment("using https://jsgo.io/dave/html2vecty")
 	file.ImportNames(map[string]string{
-		"github.com/gopherjs/vecty":                     "vecty",
-		"github.com/gopherjs/vecty/elem":                "elem",
-		"github.com/gopherjs/vecty/prop":                "prop",
-		"github.com/gopherjs/vecty/event":               "event",
-		"github.com/gopherjs/vecty/style":               "style",
-		"_ github.com/pubgo/vapper/examples/components": "components",
+		"github.com/gopherjs/vecty":       "vecty",
+		"github.com/gopherjs/vecty/elem":  "elem",
+		"github.com/gopherjs/vecty/prop":  "prop",
+		"github.com/gopherjs/vecty/event": "event",
+		"github.com/gopherjs/vecty/style": "style",
 	})
 
 	call := jen.Options{
@@ -89,16 +85,16 @@ func (s *Transpiler) transcode() (err error) {
 		switch token := token.(type) {
 		case xml.StartElement:
 			tag := token.Name.Local
+			ns := token.Name.Space
+
 			vectyFunction, ok := elemNames[tag]
 			_vectyPackage := vectyPackage
 			vectyParamater := ""
 			var ce *jen.Statement
 			if !ok {
-				if strings.HasPrefix(token.Name.Space, "components") {
+				if strings.HasPrefix(ns, "c") {
 					// not sure if we need this?
-					componentName := strings.TrimLeft(tag, "components.")
-					ce = componentElement(s.appPackage, componentName, &token)
-					if strings.HasPrefix(token.Name.Space, "c:") {
+					if strings.HasPrefix(ns, "c:") {
 						ce = componentElement(file, s.appPackage, &token)
 						vectyFunction = ""
 					} else {
@@ -108,17 +104,32 @@ func (s *Transpiler) transcode() (err error) {
 					}
 				}
 
-				_g := func(s *jen.Statement, value string) *jen.Statement {
-					vs := strings.Split(value, "in")
-					_var := vs[0]
-					_data := vs[1]
-					return jen.Qual("github.com/gopherjs/vecty", "Map").CallFunc(func(g *jen.Group) {
-						g.Id(_data)
-						g.Func().Params(jen.Id("i").Int()).Qual("github.com/gopherjs/vecty", "Tag").Block(
-							jen.Id(_var).Op(":=").Id(_data).Index(jen.Id("i")),
-							jen.Return(s),
-						)
-					})
+				// 处理for
+				_for := func(child *jen.Statement, params ...string) *jen.Statement {
+					xerror.PanicT(len(params) == 0, "params is zero")
+
+					var s *jen.Statement
+
+					if len(params) == 1 {
+						s = jen.Id("key").Id(",").Id("value")
+					}
+
+					if len(params) == 2 {
+						s = jen.Id(params[0])
+					}
+
+					if len(params) == 3 {
+						s = jen.Id(params[0]).Id(",").Id(params[1])
+					}
+
+					xerror.PanicT(s == nil, "statements error")
+
+					return jen.Func().Params().Params(jen.Id("e").Qual("github.com/gopherjs/vecty", "List")).BlockFunc(func(g *jen.Group) {
+						g.For(s.Op(":=").Id("range").Qual("t", params[len(params)-1])).BlockFunc(func(f *jen.Group) {
+							f.Id("e").Op("=").Id("append").Call(jen.Id("e"), child)
+						})
+						g.Return()
+					}).Call()
 				}
 
 				var outer error
@@ -135,7 +146,7 @@ func (s *Transpiler) transcode() (err error) {
 								switch {
 								case local == "v-if":
 									file.ImportName("github.com/gopherjs/vecty", "If")
-									g.Qual("github.com/gopherjs/vecty", "MarkupIf")
+									continue
 								case local == "v-for":
 									continue
 								case local == "v-model":
@@ -250,19 +261,21 @@ func (s *Transpiler) transcode() (err error) {
 				for _, v := range token.Attr {
 					// 处理 v-for
 					if v.Name.Space == "" && v.Name.Local == "v-for" {
-						return []jen.Code{_g(q, v.Value)}, nil
+						vs := strings.Split(v.Value, "in")
+						return []jen.Code{_for(q, strings.TrimSpace(vs[0]), strings.TrimSpace(vs[1]))}, nil
 					}
 
 					// 处理 v-if
-					if v.Name.Space == "" && v.Name.Local == "v-if" {
-						return []jen.Code{_g(q, v.Value)}, nil
-					}
+					//if v.Name.Space == "" && v.Name.Local == "v-if" {
+					//	return []jen.Code{_g(q, v.Value)}, nil
+					//}
 
 					// 处理 {}
 					// 处理 {{  }}
 				}
 
 				return []jen.Code{q}, nil
+			}
 		case xml.CharData:
 			str := string(token)
 			hasCall := callRegexp.MatchString(str)
@@ -345,7 +358,6 @@ func (s *Transpiler) transcode() (err error) {
 					return statements, nil
 
 				}
-
 			}
 			s := strings.TrimSpace(string(token))
 			if s == "" {
@@ -362,18 +374,6 @@ func (s *Transpiler) transcode() (err error) {
 		return nil, nil
 	}
 
-	file := jen.NewFile(s.packageName)
-	file.PackageComment("This file was created with https://github.com/pubgo/factor")
-	file.PackageComment("using https://jsgo.io/dave/html2vecty")
-	file.ImportNames(map[string]string{
-		"github.com/gopherjs/vecty":                     "vecty",
-		"github.com/gopherjs/vecty/elem":                "elem",
-		"github.com/gopherjs/vecty/prop":                "prop",
-		"github.com/gopherjs/vecty/event":               "event",
-		"github.com/gopherjs/vecty/style":               "style",
-		"_ github.com/pubgo/vapper/examples/components": "components",
-	})
-	file.Func().Call()
 	var elements []jen.Code
 	for {
 		c, err := _transcode(decoder)

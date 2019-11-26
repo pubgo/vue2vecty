@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/dave/jennifer/jen"
 	"github.com/pubgo/g/xerror"
+	"github.com/pubgo/vue2vecty/vue2vecty"
 	"github.com/pubgo/vue2vecty/xml"
 	"os"
 	"strings"
@@ -29,11 +30,12 @@ sss
 {{}}
 
 <li></li>
-<input/
+<input/>
+
 </b:a:todo-item>`
 
 	decoder := xml.NewDecoder(bytes.NewBufferString(a))
-	decoder.Strict = false
+	decoder.Strict = true
 	decoder.AutoClose = xml.HTMLAutoClose
 	decoder.Entity = xml.HTMLEntity
 
@@ -42,14 +44,15 @@ sss
 
 		switch token := token.(type) {
 		case xml.StartElement:
-			//fmt.Println(token.Name.Local)
-			//fmt.Println(token.Name.Space)
-			fmt.Println("sss")
+			fmt.Println(token.Name.Local)
+			fmt.Println(token.Name.Space)
 			for _, v := range token.Attr {
 				fmt.Println(v.Name.Space, v.Name.Local, "data", strings.TrimLeft(v.Name.Local, v.Name.Space), v.Value)
 			}
 		case xml.EndElement:
-			return
+			continue
+		case xml.CharData:
+			fmt.Println(string(token.Copy()))
 		}
 	}
 }
@@ -75,20 +78,37 @@ func TestName1(t *testing.T) {
 }
 
 func TestName2(t *testing.T) {
-	_g := func(s *jen.Statement, k string, data string) *jen.Statement {
+	_g := func(child *jen.Statement, params ...string) *jen.Statement {
+		xerror.PanicT(len(params) == 0, "params is zero")
+
+		var s *jen.Statement
+
+		if len(params) == 1 {
+			s = jen.Id("key").Id(",").Id("value")
+		}
+
+		if len(params) == 2 {
+			s = jen.Id(params[0])
+		}
+
+		if len(params) == 3 {
+			s = jen.Id(params[0]).Id(",").Id(params[1])
+		}
+
+		xerror.PanicT(s == nil, "statements error")
+
 		return jen.Return().Func().Params().Params(jen.Id("e").Qual("github.com/gopherjs/vecty", "List")).BlockFunc(func(g *jen.Group) {
-			g.For(jen.Id(k).Op(":=").Id("range").Qual("t", data)).BlockFunc(func(f *jen.Group) {
-				f.Id("e").Op("=").Id("append").Call(jen.Id("e"), s)
+			g.For(s.Op(":=").Id("range").Qual("t", params[len(params)-1])).BlockFunc(func(f *jen.Group) {
+				f.Id("e").Op("=").Id("append").Call(jen.Id("e"), child)
+				f.If(jen.Id(`len("")>0`)).Block()
 			})
 			g.Return()
-			//g.Func().Params(jen.Id("i").Int()).Qual("github.com/gopherjs/vecty", "Tag").Block(
-			//	jen.Id(_var).Op(":=").Id(_data).Index(jen.Id("i")),
-			//	jen.Return(s),
-			//)
 		}).Call()
 	}
 
-	fmt.Println(_g(jen.Qual("elem", "Heading2").Call(), "i", "data").Render(os.Stdout))
+	fmt.Println(_g(jen.Qual("elem", "Heading2").Call(), "data").Render(os.Stdout))
+	fmt.Println(_g(jen.Qual("elem", "Heading2").Call(), "k", "data").Render(os.Stdout))
+	fmt.Println(_g(jen.Qual("elem", "Heading2").Call(), "k", "v", "data").Render(os.Stdout))
 
 	//func() (e vecty.List) {
 	//	for k := range t.Data {
@@ -99,4 +119,28 @@ func TestName2(t *testing.T) {
 	//	}
 	//	return
 	//}()
+}
+
+func TestName3(t *testing.T) {
+	a := `<b:a:todo-item
+                    v-for="item in groceryList"
+                    v-bind:todo="item"
+                    v-bind:key="item.id"
+                    v-on:key="item.id"
+                    v-key="item.id" 
+					@key="item.id"
+					.key="item.id"
+					:key="item.id"
+					v-bind:[key]="item.id"
+            >
+sss
+{{}}
+
+<li></li>
+<input/>
+
+</b:a:todo-item>`
+	v := vue2vecty.NewTranspiler(bytes.NewBufferString(a), "github.com/pubgo/vue2vecty", "Test", "views")
+	fmt.Println(v.Code())
+
 }
