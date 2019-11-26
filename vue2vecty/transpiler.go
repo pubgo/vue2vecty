@@ -225,6 +225,8 @@ func (s *Transpiler) transcode() (err error) {
 					}
 
 					for {
+
+						// 这是 子元素
 						c, err := _transcode(decoder)
 						if err != nil {
 							if err == EOT {

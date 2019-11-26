@@ -76,7 +76,7 @@ func TestName1(t *testing.T) {
 
 func TestName2(t *testing.T) {
 	_g := func(s *jen.Statement, k string, data string) *jen.Statement {
-		return jen.Return().Func().Params().Params(jen.Id("e").Qual("github.com/gopherjs/vecty", "List")).BlockFunc(func(g *jen.Group) {
+		return jen.Func().Params().Params(jen.Id("e").Qual("github.com/gopherjs/vecty", "List")).BlockFunc(func(g *jen.Group) {
 			g.For(jen.Id(k).Op(":=").Id("range").Qual("t", data)).BlockFunc(func(f *jen.Group) {
 				f.Id("e").Op("=").Id("append").Call(jen.Id("e"), s)
 			})
