@@ -2,15 +2,44 @@ package views
 
 import (
 	"github.com/gopherjs/vecty"
-	"honnef.co/go/js/dom/v2"
 )
+
+func init() {
+	TestC(map[string]interface{}{
+		"OnInput": func(string) {},
+		"Value":   "",
+	},
+		TestC(map[string]interface{}{
+			"OnInput": func(string) {},
+			"Value":   "",
+		},
+			TestC(map[string]interface{}{
+				"OnInput": func(string) {},
+				"Value":   "",
+			},
+				vecty.Text(""),
+				vecty.Markup(),
+			),
+			vecty.Text(""),
+			vecty.Markup(),
+		),
+		vecty.Text(""),
+		vecty.Markup(),
+	)
+}
+
+func TestC(data map[string]interface{}, child ...vecty.MarkupOrChild) vecty.ComponentOrHTML {
+	return &Test{}
+}
 
 type Test struct {
 	vecty.Core
 
-	_event dom.Event
+	OnInput func(string)
 
-	Data []string
+	hello string
+	Value string
 
-	Slot []vecty.MarkupOrChild
+	Markup []vecty.Applyer
+	Slot   []vecty.ComponentOrHTML
 }

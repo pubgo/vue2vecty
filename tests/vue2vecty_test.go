@@ -144,3 +144,10 @@ sss
 	fmt.Println(v.Code())
 
 }
+
+func TestName4(t *testing.T) {
+	fmt.Println(strings.ReplaceAll(strings.Title("hello-hello"), "-", "") )
+}
+
+func TestA5(t *testing.T) {
+}

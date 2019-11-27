@@ -253,8 +253,6 @@ var vm = new Vue({
   Enlarge text
 </button>
 
-
-
 Vue.component('custom-input', {
   props: ['value'],
   template: `
@@ -344,21 +342,14 @@ func RenderBody(body Component) {
 	doc.Set("body", nextRender.Node)
 } 
 
+<span onclick="Handler(event, this, {{.SomeStruct | json}});">Example</span>
+func Handler(event dom.Event, htmlElement dom.HTMLElement, data someStruct) {
+	data.Foo = ... // Use event, htmlElement, data.
+}
+func main() {
+	js.Global.Set("Handler", jsutil.Wrap(Handler))
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+<li v-for="user in users | filterBy searchText in 'name'">{{name}}</li>
+<li v-for="user in users | orderBy field reverse">{{user.name}}</li>
 

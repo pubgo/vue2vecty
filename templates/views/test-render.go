@@ -3,7 +3,6 @@
 package views
 
 import (
-	"fmt"
 	"github.com/gopherjs/vecty"
 	"github.com/gopherjs/vecty/elem"
 	"github.com/gopherjs/vecty/event"
@@ -12,9 +11,22 @@ import (
 )
 
 func init() {
-	dom.GetWindow().AddEventListener("test-ssss", false, func(e dom.Event) {
-		fmt.Println(e.Target().TextContent())
-	})
+	// <textarea @test-input="hello">
+	/*
+		<input v-model="searchText">
+		等价于
+		<input v-bind:value="searchText" v-on:input="searchText = $event.target.value">
+		<input v-bind:value="searchText" v-on:input=func(event){
+		    searchText = $event.target.value
+		}>
+		<custom-input v-bind:value="$searchText" v-on:input="searchTextEventFunction" ></custom-input>
+		&CustomInput{
+			Value=t.searchText,
+			OnInput=func(s string) {
+				t.searchText = s
+			},
+		}
+	*/
 }
 
 func (t *Test) Render() vecty.ComponentOrHTML {
@@ -35,6 +47,23 @@ func (t *Test) Render() vecty.ComponentOrHTML {
 			return
 		}(),
 		vecty.If(len("") > 0, elem.Heading2(vecty.Text("Class attributes"))),
+		func() vecty.ComponentOrHTML {
+			//dom.GetWindow().AddEventListener("test-input-time", false, func(e dom.Event) {
+			//	t.hello = e.Target().TextContent()
+			//	vecty.Rerender(t)
+			//})
+			c := &Test{
+				OnInput: func(s string) {
+					t.Value = s
+				},
+				Value: t.Value,
+			}
+
+			c.Markup = append(c.Markup, vecty.Markup())
+			c.Slot = append(c.Slot, vecty.Text(""))
+
+			return c
+		}(),
 		&Test{},
 		elem.Paragraph(
 			vecty.Markup(
@@ -43,7 +72,6 @@ func (t *Test) Render() vecty.ComponentOrHTML {
 				event.Click(func(i *vecty.Event) {
 					dom.GetWindow().DispatchEvent(dom.WrapEvent(i.Target))
 					dom.WrapEvent(i.Target).PreventDefault()
-
 				}),
 			),
 		),
@@ -64,7 +92,15 @@ func (t *Test) Render() vecty.ComponentOrHTML {
 				prop.Type(prop.TypeCheckbox),
 				prop.Checked(true),
 				prop.Autofocus(true),
+				prop.Value(t.Value),
+				event.Input(func(event *vecty.Event) {
+					t.Value = dom.WrapEvent(event.Target).Target().TextContent()
+					dom.WrapEvent(event.Target).PreventDefault()
+					// $emit(t.Input, t.Value)
+					prop.Value()
+				}),
 			),
+
 		),
 		elem.Anchor(
 			vecty.Markup(
