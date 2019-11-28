@@ -186,3 +186,16 @@ func (t *Test) Render() vecty.ComponentOrHTML {
 		),
 	)
 }
+
+func (t *Test) Render() vecty.ComponentOrHTML {
+	return elem.UnorderedList(func() (e vecty.List) {
+		for key, value := range t.groceryList {
+			e = append(e, elem.ListItem(vecty.Markup(prop.Value(t.todo), event.Input(func(e *vecty.Event) {
+				t.todo = dom.WrapEvent(e.Target).Target().TextContent()
+				dom.WrapEvent(e.Target).PreventDefault()
+			}), event.Key(t.click), event.Click(t.onClick), vecty.Data("hello", hello)), vecty.Text(t.moke), elem.ListItem(vecty.UnsafeHTML(t.world)), elem.Input()))
+		}
+		return
+	}(), vecty.If(t.hello > 0, elem.Paragraph(vecty.Markup())))
+}
+

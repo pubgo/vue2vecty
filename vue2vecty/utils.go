@@ -1,10 +1,11 @@
 package vue2vecty
 
 import (
-	"encoding/xml"
+	"fmt"
 	"github.com/aymerick/douceur/parser"
 	"github.com/dave/jennifer/jen"
 	"github.com/pubgo/g/xerror"
+	"github.com/pubgo/vue2vecty/xml"
 	"regexp"
 	"strings"
 )
@@ -21,80 +22,152 @@ func createStruct(packageName, componentName string) *jen.File {
 	return file
 }
 
+var ternaryReg = xerror.PanicErr(regexp.Compile(`(.+)\?(.+):(.+)`)).(*regexp.Regexp)
+var ternaryBrace = xerror.PanicErr(regexp.Compile(`.*{{{(.+)}}}.*`)).(*regexp.Regexp)
+var twoBrace = xerror.PanicErr(regexp.Compile(`.*{{(.+)}}.*`)).(*regexp.Regexp)
+var forReg = xerror.PanicErr(regexp.Compile(`,|\s+in\s+`)).(*regexp.Regexp)
+var _for = func(child *jen.Statement, value string) *jen.Statement {
+	xerror.PanicT(value == "", "params is zero")
+
+	var params []string
+	for _, p := range forReg.Split(value, -1) {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		params = append(params, p)
+	}
+
+	var s *jen.Statement
+	if len(params) == 1 {
+		s = jen.Id("key,value")
+	}
+
+	if len(params) == 2 {
+		s = jen.Id(params[0])
+	}
+
+	if len(params) == 3 {
+		s = jen.Id(params[0] + "," + params[1])
+	}
+
+	xerror.PanicT(s == nil, "statements error")
+
+	return jen.Func().Params().Params(jen.Id("e").Qual("github.com/gopherjs/vecty", "List")).BlockFunc(func(g *jen.Group) {
+		g.For(s.Op(":=").Range().Add(exp(params[len(params)-1]))).BlockFunc(func(f *jen.Group) {
+			f.Id("e=").Append(jen.Id("e"), child)
+		})
+		g.Return()
+	}).Call()
+}
+
 func exp(e string) *jen.Statement {
 	e = strings.TrimSpace(e)
-	_, _ = regexp.MatchString(`.+\?.+:.+`, "")
-	/*
-		[activeClass, errorClass]
-		["activeClass", "errorClass"]
-		[isActive ? activeClass : "", errorClass]
-		[{ active: isActive }, errorClass]
-		{ color: activeColor, fontSize: fontSize + 'px' }
-		{ display: ['-webkit-box', '-ms-flexbox', 'flex'] }
-		{{ item.message }}
-		counter += 1
-	*/
-
-	m, err := regexp.MatchString(`.+\?.+:.+`, "")
 
 	switch {
-	case len(e) > 4 && e[:2] == "{{" && e[len(e)-2:] == "}}":
+	case e == "":
+		return nil
+	case strings.Contains(e, "$"):
+		return exp(strings.ReplaceAll(e, "$", "t."))
+	case !strings.Contains(e, " ") && strings.Contains(e, "="):
+		return jen.Id(strings.ReplaceAll(strings.Title(e), "-", ""))
+	case len(e) > 2 && e[0:1] == "'" && e[len(e)-1:] == "'":
+		return jen.Id(fmt.Sprintf(`"%s"`, e[1:len(e)-1]))
+	case strings.Contains(e, "{{{") && strings.Contains(e, "}}}") && ternaryBrace.MatchString(e):
+		_d := ternaryBrace.FindStringSubmatch(e)
+		if len(_d) == 1 {
+			return nil
+		}
+		return jen.Qual("github.com/gopherjs/vecty", "UnsafeHTML").Call(exp(_d[1]))
+	case twoBrace.MatchString(e):
+		_d := twoBrace.FindStringSubmatch(e)
+		if len(_d) == 1 {
+			return nil
+		}
+		return jen.Qual("github.com/gopherjs/vecty", "Text").Call(exp(_d[1]))
 	case len(e) > 2 && e[:1] == "[" && e[len(e)-1:] == "]":
+		return nil
 	case len(e) > 2 && e[:1] == "{" && e[len(e)-1:] == "}":
-	case !strings.Contains(e, " "):
-		return jen.Id(e)
-
-	case strings.Contains(e, "?:") && len(strings.Split(e, "?:")) == 2: //{{ name?:"hello" }}
-		return jen.If(jen.Id("name").Op("==").Lit("")).BlockFunc(func(g *jen.Group) {
-			g.Return()
-		}).Else().BlockFunc(func(g *jen.Group) {
-			g.Return()
-		})
-	case strings.Contains(e, "?:") && len(strings.Split(e, "?:")) == 2: //{{ name==""? "hello" : "world" }}
-		return jen.If(jen.Id("name").Op("==").Lit("")).BlockFunc(func(g *jen.Group) {
-			g.Return()
-		}).Else().BlockFunc(func(g *jen.Group) {
-			g.Return()
-		})
-	case m && err == nil:
+		return nil
+	case len(strings.Split(e, "?:")) == 2:
+		_s := strings.Split(e, "?:")
+		s0 := strings.TrimSpace(_s[0])
+		s1 := strings.TrimSpace(_s[1])
+		return jen.Func().Interface().BlockFunc(func(g *jen.Group) {
+			g.If(jen.Id(s0).Op("==").Lit("")).BlockFunc(func(g *jen.Group) {
+				g.Return(jen.Id(s1))
+			}).Else().BlockFunc(func(g *jen.Group) {
+				g.Return(jen.Id(s0))
+			})
+		}).Call()
+	case ternaryReg.MatchString(e):
+		_s := ternaryReg.FindStringSubmatch(e)
+		s1 := strings.TrimSpace(_s[1])
+		s2 := strings.TrimSpace(_s[2])
+		s3 := strings.TrimSpace(_s[3])
+		return jen.Func().Params().Interface().BlockFunc(func(g *jen.Group) {
+			g.If(jen.Id(s1)).BlockFunc(func(g *jen.Group) {
+				g.Return(jen.Id(s2))
+			}).Else().BlockFunc(func(g *jen.Group) {
+				g.Return(jen.Id(s3))
+			})
+		}).Call()
 	default:
 		return jen.Id(e)
 	}
-
-	return nil
 }
 
-func componentAttr(custom bool, file *jen.File, d jen.Dict, g jen.Group, attr xml.Attr) (*jen.Statement, *jen.Statement) {
+func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 	ns := strings.TrimSpace(attr.Name.Space)
 	key := strings.TrimSpace(attr.Name.Local)
 	key = strings.TrimLeft(key, ns)
-	value := strings.TrimSpace(attr.Value)
+	value := strings.ReplaceAll(strings.TrimSpace(attr.Value), "$", "t.")
+
+	fmt.Println(ns, key, value)
 
 	switch {
-	case ns == "":
-		switch key {
-		case "v-for", "xmlns":
-			return nil, nil
-		case "v-if":
-			file.ImportName("github.com/gopherjs/vecty", "vecty")
-			return nil, nil
+	case ns == "" && (key == "v-for" || key == "xmlns" || key == "v-if"):
+		return
+	case ns == "" && len(key) > 5 && key[:5] == "data-" && value != "":
+		key = key[5:]
+		if d != nil {
+			d[jen.Lit(strings.Title(key))] = exp(value)
 		}
+
+		if g != nil {
+			g.Qual("github.com/gopherjs/vecty", "Data").Call(jen.Lit(key), exp(value))
+		}
+		return
 	case ns == "v-on" || key[0] == '@':
-		key = strings.ReplaceAll(strings.Title(strings.TrimLeft(key, ns)[1:]), "-", "")
-		if custom {
-			d[jen.Lit("On"+key)] = jen.Id(value)
-			return nil, nil
-		} else {
-			g.Qual("github.com/gopherjs/vecty/event", key).Call(jen.Id(value))
-			return nil, nil
+		key = strings.ReplaceAll(strings.Title(key[1:]), "-", "")
+		//fmt.Println(g != nil, d != nil, ns, key, len(key), key[0] == '@',value, "\n\n")
+		if d != nil {
+			d[jen.Lit("On"+key)] = jen.Func().Block(exp(value)).Call()
 		}
+
+		if g != nil {
+			g.Qual("github.com/gopherjs/vecty/event", key).Call(exp(value))
+		}
+		return
 	case ns == "v-bind" || key[0] == ':':
-		key = string(strings.TrimLeft(key, ns)[1:])
+		key = key[1:]
 		switch key {
+		case "autofocus", "alt", "checked", "htmlFor", "href", "id", "placeholder", "src", "type", "value", "name", "disabled":
+			if key == "id" {
+				key = "ID"
+			} else if key == "htmlFor" {
+				key = "For"
+			}
+
+			g.Qual(vectyPropPackage, strings.Title(key)).Call(exp(value))
+			return
 		case "style":
-			style(file, g, value)
+			//style(file, g, value)
+			return
 		case "v-html":
+			return
 		case "class":
+			return
 			file.ImportName("github.com/gopherjs/vecty", "vecty")
 			g.Qual("github.com/gopherjs/vecty", "Class").CallFunc(func(g *jen.Group) {
 				classes := strings.Split(value, " ")
@@ -108,30 +181,50 @@ func componentAttr(custom bool, file *jen.File, d jen.Dict, g jen.Group, attr xm
 					}
 				}
 			})
+			return
 		}
+		return
 	case key == "v-model":
-		value = "t." + value
-		if custom {
-			d[jen.Id("Value")] = jen.Id(value)
+		_exp := exp(value)
+		if _exp == nil {
+			return
+		}
+
+		if d != nil {
+			d[jen.Id("Value")] = _exp
 			d[jen.Id("OnInput")] = jen.Func().Params(jen.Id("v").String()).BlockFunc(func(g *jen.Group) {
 				g.Id(value).Op("=").Id("v")
 			})
-		} else {
+		}
+
+		if g != nil {
 			file.ImportName("github.com/gopherjs/vecty/prop", "prop")
 			file.ImportName("github.com/gopherjs/vecty/event", "event")
+			file.ImportName("honnef.co/go/js/dom/v2", "dom")
 
-			g.Qual("github.com/gopherjs/vecty/prop", "Value").Call(jen.Id(value))
+			g.Qual("github.com/gopherjs/vecty/prop", "Value").Call(_exp)
 			g.Qual("github.com/gopherjs/vecty/event", "Input").CallFunc(func(g *jen.Group) {
-				g.Func().Params(jen.Id("e").Qual("github.com/gopherjs/vecty", "Event")).BlockFunc(func(g *jen.Group) {
+				g.Func().Params(jen.Id("e").Op("*").Qual("github.com/gopherjs/vecty", "Event")).BlockFunc(func(g *jen.Group) {
 					// t.Value = dom.WrapEvent(event.Target).Target().TextContent()
 					// dom.WrapEvent(event.Target).PreventDefault()
-					g.Id(value).Op("=").Id("e")
+					g.Id(value).Op("=").Id("dom.WrapEvent(e.Target).Target().TextContent()")
+					g.Id("dom.WrapEvent(e.Target).PreventDefault()")
 				})
 			})
 		}
-
 	case key == "v-html":
-		return nil, nil
+		g.Qual("github.com/gopherjs/vecty", "UnsafeHTML").Call(exp(value))
+		return
+	case key == "v-text":
+		return
+	case key == "v-focus":
+		return
+	case key == "v-pre":
+		return
+	case key == "v-once":
+		return
+	case key == "class":
+		return
 	case key == "style":
 		css, err := parser.ParseDeclarations(value)
 		xerror.PanicM(err, "css parsing error")
@@ -146,14 +239,12 @@ func componentAttr(custom bool, file *jen.File, d jen.Dict, g jen.Group, attr xm
 				jen.Lit(dec.Value),
 			)
 		}
-	case key == "class":
-
+		return
 	default:
-		key = strings.ToUpper(string(key[0])) + key[1:]
-		d[jen.Id(key)] = jen.Lit(value)
+		fmt.Println(ns, key, value, "ok")
+		return
 	}
 
-	return nil, nil
 }
 
 func style(file *jen.File, g *jen.Group, value string) {
@@ -172,109 +263,7 @@ func style(file *jen.File, g *jen.Group, value string) {
 	}
 }
 
-func tagAttr(file *jen.File, g *jen.Group, attr xml.Attr) {
-	ns := attr.Name.Space
-	key := attr.Name.Local
-	value := attr.Value
-
-	switch {
-	case ns == "" && key == "v-if":
-		file.ImportName("github.com/gopherjs/vecty", "vecty")
-		return
-	case ns == "" && (key == "v-for" || key == "xmlns"):
-		return
-	case ns == "v-bind" || key[0] == ':':
-		key = string(strings.TrimLeft(key, ns)[1:])
-		switch key {
-		case "style":
-			style(file, g, value)
-		case "v-html":
-		case "class":
-			file.ImportName("github.com/gopherjs/vecty", "vecty")
-			g.Qual("github.com/gopherjs/vecty", "Class").CallFunc(func(g *jen.Group) {
-				classes := strings.Split(value, " ")
-				for _, class := range classes {
-					if strings.HasPrefix(class, "{vecty-field:") {
-						field := strings.TrimLeft(class, "{vecty-field:")
-						field = field[:len(field)-1]
-						g.Add(jen.Id("p").Dot(field))
-					} else {
-						g.Lit(class)
-					}
-				}
-			})
-		}
-	case key == "v-model":
-	case key == "v-on":
-	case key == "style":
-		style(file, g, value)
-	case key == "class":
-		g.Qual("github.com/gopherjs/vecty", "Class").CallFunc(func(g *jen.Group) {
-			classes := strings.Split(value, " ")
-			for _, class := range classes {
-				if strings.HasPrefix(class, "{vecty-field:") {
-					field := strings.TrimLeft(class, "{vecty-field:")
-					field = field[:len(field)-1]
-					g.Add(jen.Id("p").Dot(field))
-				} else {
-					g.Lit(class)
-				}
-			}
-		})
-
-	case strings.HasPrefix(key, "data-"):
-		attribute := strings.TrimPrefix(key, "data-")
-		g.Qual("github.com/gopherjs/vecty", "Data").Call(
-			jen.Lit(attribute),
-			jen.Lit(value),
-		)
-
-	case boolProps[key] != "":
-		value := value == "true"
-		g.Qual("github.com/gopherjs/vecty/prop", boolProps[key]).Call(
-			jen.Lit(value),
-		)
-	case stringProps[key] != "":
-		if strings.HasPrefix(value, "{vecty-field:") {
-			field := strings.TrimLeft(value, "{vecty-field:")
-			field = field[:len(field)-1]
-			g.Qual("github.com/gopherjs/vecty/prop", stringProps[key]).Call(
-				jen.Id("p").Dot(field),
-			)
-		} else {
-			g.Qual("github.com/gopherjs/vecty/prop", stringProps[key]).Call(
-				jen.Lit(value),
-			)
-		}
-	case strings.HasPrefix(ns, "vecty"):
-		field := strings.TrimLeft(key, "on")
-		field = strings.ToLower(field)
-		g.Qual("github.com/gopherjs/vecty/event", strings.Title(field)).Call(
-			jen.Id("p").Dot(value),
-		)
-	case strings.HasPrefix(ns, "components"):
-		component := strings.TrimLeft(key, "components.")
-		jen.Op("&").Id(component).Values()
-	case key == "xmlns":
-		g.Qual("github.com/gopherjs/vecty", "Namespace").Call(
-			jen.Lit(value),
-		)
-	case key == "type" && typeProps[value] != "":
-		g.Qual("github.com/gopherjs/vecty/prop", "Type").Call(
-			jen.Qual("github.com/gopherjs/vecty/prop", typeProps[value]),
-		)
-
-	case key == "v-for":
-
-	default:
-		g.Qual("github.com/gopherjs/vecty", "Attribute").Call(
-			jen.Lit(key),
-			jen.Lit(value),
-		)
-	}
-}
-
-func componentElement(file *jen.File, appPackage string, token *xml.StartElement) *jen.Statement {
+func componentElement(file *jen.File, appPackage string, token xml.StartElement) *jen.Statement {
 	appPackage += "/components"
 	ts := strings.Split(token.Name.Local, ":")
 	_l := len(ts)
@@ -291,21 +280,12 @@ func componentElement(file *jen.File, appPackage string, token *xml.StartElement
 	return jen.Qual(vectyPackage, name).CallFunc(func(g *jen.Group) {
 		g.Map(jen.String()).Interface().Values(jen.DictFunc(func(d jen.Dict) {
 			for _, v := range token.Attr {
-				if v.Name.Local == "class" {
-					continue
-				}
-
-				d[jen.Id(v.Name.Local)] = jen.Lit(v.Value)
+				componentAttr(file, d, nil, v)
 			}
 		}))
 
 		for _, v := range token.Attr {
-			if v.Name.Local == "class" {
-				g.Qual("github.com/gopherjs/vecty", "Style").CallFunc(func(g *jen.Group) {
-					jen.Lit(v.Value)
-					jen.Lit(v.Value)
-				})
-			}
+			componentAttr(file, nil, g, v)
 		}
 	})
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/pubgo/vue2vecty/vue2vecty"
 	"github.com/pubgo/vue2vecty/xml"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -16,7 +17,7 @@ func TestName(t *testing.T) {
 	defer xerror.Assert()
 
 	a := `<b:a:todo-item
-                    v-for="item in groceryList"
+                    v-for="groceryList"
                     v-bind:todo="item"
                     v-bind:key="item.id"
                     v-on:key="item.id"
@@ -25,6 +26,7 @@ func TestName(t *testing.T) {
 					.key="item.id"
 					:key="item.id"
 					v-bind:[key]="item.id"
+					v-focus=true
             >
 sss
 {{}}
@@ -35,7 +37,7 @@ sss
 </b:a:todo-item>`
 
 	decoder := xml.NewDecoder(bytes.NewBufferString(a))
-	decoder.Strict = true
+	decoder.Strict = false
 	decoder.AutoClose = xml.HTMLAutoClose
 	decoder.Entity = xml.HTMLEntity
 
@@ -122,32 +124,62 @@ func TestName2(t *testing.T) {
 }
 
 func TestName3(t *testing.T) {
-	a := `<b:a:todo-item
-                    v-for="item in groceryList"
-                    v-bind:todo="item"
-                    v-bind:key="item.id"
-                    v-on:key="item.id"
-                    v-key="item.id" 
-					@key="item.id"
-					.key="item.id"
-					:key="item.id"
-					v-bind:[key]="item.id"
-            >
-sss
-{{}}
+	a := `
+<ul>
 
-<li></li>
+<li
+                    v-for="$groceryList"
+                    v-model="$todo"
+					@key="$click"
+					@click="$onClick"
+					:key="item.id"
+					class="a b c"
+					data-hello="hello"
+					v-focus=true
+            >
+hello
+{{$moke}}
+
+<li> {{{$world}}} </li>
 <input/>
 
-</b:a:todo-item>`
+</li>
+
+
+<p v-if="$hello>0"></p>
+
+</ul>
+`
+
 	v := vue2vecty.NewTranspiler(bytes.NewBufferString(a), "github.com/pubgo/vue2vecty", "Test", "views")
 	fmt.Println(v.Code())
-
 }
 
 func TestName4(t *testing.T) {
-	fmt.Println(strings.ReplaceAll(strings.Title("hello-hello"), "-", "") )
+	fmt.Println(strings.ReplaceAll(strings.Title("hello-hello"), "-", ""))
 }
 
 func TestA5(t *testing.T) {
+	ternary := regexp.MustCompile(`(.+)\?(.+):(.+)`)
+	//ternary := regexp.MustCompile(`(.+)\?:(.+)`)
+	fmt.Println(ternary.Split("a>b ? dd : 22", -1))
+	fmt.Println(ternary.MatchString("a>b?dd:22"))
+	fmt.Println(ternary.FindStringSubmatch("a>b?dd:22"))
+	fmt.Println(ternary.FindStringSubmatch("a>b?:22"))
+
+	//var ternaryBrace = xerror.PanicErr(regexp.Compile(`.*{{{(.+)}}}.*`)).(*regexp.Regexp)
+	var twoBrace = xerror.PanicErr(regexp.Compile(`.*{{(.+)}}.*`)).(*regexp.Regexp)
+	fmt.Println(twoBrace.FindStringSubmatch(`sss{{{<li>sss</li>}}}sss`))
+	fmt.Println(jen.Lit("11").Render(os.Stdout))
+	fmt.Println(jen.Id("11").Render(os.Stdout))
+	fmt.Println(jen.Lit(11).Render(os.Stdout))
+	fmt.Println(jen.Lit(`'nn+1/2'`).Render(os.Stdout))
+	fmt.Println(jen.Id(`"nn"+1/2`).Render(os.Stdout))
+
+	var forReg = xerror.PanicErr(regexp.Compile(`,|\s+in\s+`)).(*regexp.Regexp)
+	fmt.Println(forReg.Split(`m`, -1))
+	fmt.Println(forReg.Split(`a in m`, -1))
+	fmt.Println(forReg.Split(`a,b in m`, -1))
+	fmt.Println(forReg.Split(`a,b,i in m`, -1))
+	fmt.Println(jen.Id(strings.ToTitle("id-hello")).Render(os.Stdout))
 }
