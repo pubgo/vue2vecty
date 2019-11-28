@@ -147,6 +147,8 @@ hello
 
 
 <p v-if="$hello>0"></p>
+<p @click="a=1"></p>
+<p @click="a+=1"></p>
 
 </ul>
 `
@@ -182,4 +184,5 @@ func TestA5(t *testing.T) {
 	fmt.Println(forReg.Split(`a,b in m`, -1))
 	fmt.Println(forReg.Split(`a,b,i in m`, -1))
 	fmt.Println(jen.Id(strings.ToTitle("id-hello")).Render(os.Stdout))
+	fmt.Println(jen.Id(`"hello"`).Render(os.Stdout))
 }

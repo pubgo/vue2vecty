@@ -26,7 +26,7 @@ var ternaryReg = xerror.PanicErr(regexp.Compile(`(.+)\?(.+):(.+)`)).(*regexp.Reg
 var ternaryBrace = xerror.PanicErr(regexp.Compile(`.*{{{(.+)}}}.*`)).(*regexp.Regexp)
 var twoBrace = xerror.PanicErr(regexp.Compile(`.*{{(.+)}}.*`)).(*regexp.Regexp)
 var forReg = xerror.PanicErr(regexp.Compile(`,|\s+in\s+`)).(*regexp.Regexp)
-var _for = func(child *jen.Statement, value string) *jen.Statement {
+var _for = func(file *jen.File, child *jen.Statement, value string) *jen.Statement {
 	xerror.PanicT(value == "", "params is zero")
 
 	var params []string
@@ -54,37 +54,35 @@ var _for = func(child *jen.Statement, value string) *jen.Statement {
 	xerror.PanicT(s == nil, "statements error")
 
 	return jen.Func().Params().Params(jen.Id("e").Qual("github.com/gopherjs/vecty", "List")).BlockFunc(func(g *jen.Group) {
-		g.For(s.Op(":=").Range().Add(exp(params[len(params)-1]))).BlockFunc(func(f *jen.Group) {
+		g.For(s.Op(":=").Range().Add(exp(file, params[len(params)-1]))).BlockFunc(func(f *jen.Group) {
 			f.Id("e=").Append(jen.Id("e"), child)
 		})
 		g.Return()
 	}).Call()
 }
 
-func exp(e string) *jen.Statement {
+func exp(file *jen.File, e string) *jen.Statement {
 	e = strings.TrimSpace(e)
 
 	switch {
 	case e == "":
 		return nil
 	case strings.Contains(e, "$"):
-		return exp(strings.ReplaceAll(e, "$", "t."))
-	case !strings.Contains(e, " ") && strings.Contains(e, "="):
-		return jen.Id(strings.ReplaceAll(strings.Title(e), "-", ""))
+		return exp(file, strings.ReplaceAll(e, "$", "t."))
 	case len(e) > 2 && e[0:1] == "'" && e[len(e)-1:] == "'":
-		return jen.Id(fmt.Sprintf(`"%s"`, e[1:len(e)-1]))
+		return exp(file, e[1:len(e)-1])
 	case strings.Contains(e, "{{{") && strings.Contains(e, "}}}") && ternaryBrace.MatchString(e):
 		_d := ternaryBrace.FindStringSubmatch(e)
 		if len(_d) == 1 {
 			return nil
 		}
-		return jen.Qual("github.com/gopherjs/vecty", "UnsafeHTML").Call(exp(_d[1]))
+		return jen.Qual(vectyPackage, "UnsafeHTML").Call(exp(file, _d[1]))
 	case twoBrace.MatchString(e):
 		_d := twoBrace.FindStringSubmatch(e)
 		if len(_d) == 1 {
 			return nil
 		}
-		return jen.Qual("github.com/gopherjs/vecty", "Text").Call(exp(_d[1]))
+		return jen.Qual(vectyPackage, "Text").Call(exp(file, _d[1]))
 	case len(e) > 2 && e[:1] == "[" && e[len(e)-1:] == "]":
 		return nil
 	case len(e) > 2 && e[:1] == "{" && e[len(e)-1:] == "}":
@@ -93,11 +91,12 @@ func exp(e string) *jen.Statement {
 		_s := strings.Split(e, "?:")
 		s0 := strings.TrimSpace(_s[0])
 		s1 := strings.TrimSpace(_s[1])
-		return jen.Func().Interface().BlockFunc(func(g *jen.Group) {
-			g.If(jen.Id(s0).Op("==").Lit("")).BlockFunc(func(g *jen.Group) {
-				g.Return(jen.Id(s1))
+		file.ImportName("github.com/pubgo/g/pkg", "pkg")
+		return jen.Func().Params().String().BlockFunc(func(g *jen.Group) {
+			g.If(jen.Qual("github.com/pubgo/g/pkg", "IsNone").Call(exp(file, s0))).BlockFunc(func(g *jen.Group) {
+				g.Return(exp(file, s0))
 			}).Else().BlockFunc(func(g *jen.Group) {
-				g.Return(jen.Id(s0))
+				g.Return(exp(file, s1))
 			})
 		}).Call()
 	case ternaryReg.MatchString(e):
@@ -105,13 +104,15 @@ func exp(e string) *jen.Statement {
 		s1 := strings.TrimSpace(_s[1])
 		s2 := strings.TrimSpace(_s[2])
 		s3 := strings.TrimSpace(_s[3])
-		return jen.Func().Params().Interface().BlockFunc(func(g *jen.Group) {
-			g.If(jen.Id(s1)).BlockFunc(func(g *jen.Group) {
+		return jen.Func().Params().String().BlockFunc(func(g *jen.Group) {
+			g.If(exp(file, s1)).BlockFunc(func(g *jen.Group) {
 				g.Return(jen.Id(s2))
 			}).Else().BlockFunc(func(g *jen.Group) {
 				g.Return(jen.Id(s3))
 			})
 		}).Call()
+	case strings.Contains(e, "="):
+		return jen.Func().Params().Block(jen.Id(e))
 	default:
 		return jen.Id(e)
 	}
@@ -131,43 +132,51 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 	case ns == "" && len(key) > 5 && key[:5] == "data-" && value != "":
 		key = key[5:]
 		if d != nil {
-			d[jen.Lit(strings.Title(key))] = exp(value)
+			d[jen.Lit(strings.Title(key))] = exp(file, value)
 		}
 
 		if g != nil {
-			g.Qual("github.com/gopherjs/vecty", "Data").Call(jen.Lit(key), exp(value))
+			g.Qual(vectyPackage, "Data").Call(jen.Lit(key), exp(file, value))
 		}
 		return
 	case ns == "v-on" || key[0] == '@':
 		key = strings.ReplaceAll(strings.Title(key[1:]), "-", "")
 		//fmt.Println(g != nil, d != nil, ns, key, len(key), key[0] == '@',value, "\n\n")
 		if d != nil {
-			d[jen.Lit("On"+key)] = jen.Func().Block(exp(value)).Call()
+			d[jen.Lit("On"+key)] = jen.Func().Block(exp(file, value)).Call()
 		}
 
 		if g != nil {
-			g.Qual("github.com/gopherjs/vecty/event", key).Call(exp(value))
+			g.Qual("github.com/gopherjs/vecty/event", key).Call(exp(file, value))
 		}
 		return
 	case ns == "v-bind" || key[0] == ':':
 		key = key[1:]
-		switch key {
-		case "autofocus", "alt", "checked", "htmlFor", "href", "id", "placeholder", "src", "type", "value", "name", "disabled":
-			if key == "id" {
-				key = "ID"
-			} else if key == "htmlFor" {
-				key = "For"
-			}
 
-			g.Qual(vectyPropPackage, strings.Title(key)).Call(exp(value))
+		if _key, ok := stringProps[key]; ok {
+			g.Qual(vectyPropPackage, _key).Call(exp(file, value))
 			return
+		}
+
+		switch key {
 		case "style":
-			//style(file, g, value)
+			css, err := parser.ParseDeclarations(value)
+			xerror.PanicM(err, "css parsing error")
+
+			for _, dec := range css {
+				if dec.Important {
+					dec.Value += "!important"
+				}
+				file.ImportName("github.com/gopherjs/vecty", "vecty")
+				g.Qual("github.com/gopherjs/vecty", "Style").Call(
+					jen.Lit(dec.Property),
+					jen.Lit(dec.Value),
+				)
+			}
 			return
 		case "v-html":
 			return
 		case "class":
-			return
 			file.ImportName("github.com/gopherjs/vecty", "vecty")
 			g.Qual("github.com/gopherjs/vecty", "Class").CallFunc(func(g *jen.Group) {
 				classes := strings.Split(value, " ")
@@ -185,7 +194,7 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 		}
 		return
 	case key == "v-model":
-		_exp := exp(value)
+		_exp := exp(file, value)
 		if _exp == nil {
 			return
 		}
@@ -213,7 +222,7 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 			})
 		}
 	case key == "v-html":
-		g.Qual("github.com/gopherjs/vecty", "UnsafeHTML").Call(exp(value))
+		g.Qual("github.com/gopherjs/vecty", "UnsafeHTML").Call(exp(file, value))
 		return
 	case key == "v-text":
 		return
@@ -245,22 +254,6 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 		return
 	}
 
-}
-
-func style(file *jen.File, g *jen.Group, value string) {
-	css, err := parser.ParseDeclarations(value)
-	xerror.PanicM(err, "css parsing error")
-
-	for _, dec := range css {
-		if dec.Important {
-			dec.Value += "!important"
-		}
-		file.ImportName("github.com/gopherjs/vecty", "vecty")
-		g.Qual("github.com/gopherjs/vecty", "Style").Call(
-			jen.Lit(dec.Property),
-			jen.Lit(dec.Value),
-		)
-	}
 }
 
 func componentElement(file *jen.File, appPackage string, token xml.StartElement) *jen.Statement {

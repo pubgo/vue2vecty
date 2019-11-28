@@ -16,6 +16,12 @@ var stringProps = map[string]string{
 	"placeholder": "Placeholder",
 	"src":         "Src",
 	"value":       "Value",
+	"autofocus":   "Autofocus",
+	"disabled":    "Disabled",
+	"checked":     "Checked",
+	"type":        "Type",
+	"Name":        "name",
+	"Alt":         "alt",
 }
 
 // TypeProps

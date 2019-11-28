@@ -124,12 +124,12 @@ func (s *Transpiler) transcode() (err error) {
 
 					if ns == "" && key == "v-if" && value != "" {
 						file.ImportName("github.com/gopherjs/vecty", "vecty")
-						ce = jen.Qual("github.com/gopherjs/vecty", "If").Call(exp(value), ce)
+						ce = jen.Qual("github.com/gopherjs/vecty", "If").Call(exp(file,value), ce)
 						break
 					}
 
 					if ns == "" && key == "v-for" {
-						ce = _for(ce, value)
+						ce = _for(file, ce, value)
 						break
 					}
 				}
@@ -137,7 +137,7 @@ func (s *Transpiler) transcode() (err error) {
 				return []jen.Code{ce}, nil
 			}
 		case xml.CharData:
-			if _exp := exp(string(token)); _exp != nil {
+			if _exp := exp(file, string(token)); _exp != nil {
 				file.ImportName("github.com/gopherjs/vecty", "vecty")
 				return []jen.Code{_exp}, nil
 			}
