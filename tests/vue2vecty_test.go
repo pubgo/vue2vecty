@@ -196,7 +196,7 @@ func TestName3(t *testing.T) {
 	b:=`<div>
     <div>
         <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
-            <a class="navbar-brand" href="#">Navbar</a>
+            <a class="navbar-brand" href="">Navbar</a>
             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault"
                     aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
@@ -239,7 +239,7 @@ func TestName3(t *testing.T) {
         <div style="float: right;">
             <label>
             <textarea style="font-family: monospace;" cols="70" rows="14"
-                      @input="texthandler">{vecty-field:Input}</textarea>
+                      @input="texthandler">{{Input}}</textarea>
             </label>
         </div>
 
