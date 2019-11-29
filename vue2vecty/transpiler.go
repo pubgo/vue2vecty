@@ -71,6 +71,7 @@ func (s *Transpiler) transcode() (err error) {
 		if err == io.EOF || token == nil {
 			return nil, xerror.ErrDone
 		}
+		xerror.Panic(err)
 
 		switch token := token.(type) {
 		case xml.StartElement:

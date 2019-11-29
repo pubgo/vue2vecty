@@ -143,58 +143,194 @@ func TestName2(t *testing.T) {
 }
 
 func TestName3(t *testing.T) {
-	a := `
-<ul>
+//	a := `
+//<ul>
+//
+//<li
+//                    v-for="$groceryList"
+//                    v-model="$todo"
+//					@key="$click"
+//					@click="$onClick"
+//					:key="key.id"
+//					class="a b c"
+//					data-hello="hello"
+//					v-focus=true
+//            >
+//hello
+//{{$moke}}
+//
+//<li> {{{$world}}} </li>
+//<input/>
+//
+//</li>
+//
+//
+//<p v-if="$hello>0"></p>
+//<p @click="a"></p>
+//<p @click="a1"></p>
+//<p data-click-sss="name?:'hello'"></p>
+//<p data-click-sss="name>0?world:'hello'"></p>
+//
+//<p>hello1111 {{name>0?world:hello}}</p>
+//<p>hello1111 {{"hello1111"+hello}}</p>
+//
+//<li> <li> <p>测试 {{hello}}</p> </li></li>
+//<li> <li> <p>测试</p> </li></li>
+//
+//<c:a:b:Hello
+//                    v-for="$groceryList"
+//                    v-model="$todo"
+//					@key="$click"
+//					@click="$onClick"
+//					:key="key.id"
+//					class="a b c"
+//					data-hello="hello"
+//					v-focus=true
+//            >
+//		<li> <li> <p>测试</p> </li></li>
+//		<li> <li> <p>测试 {{hhhh}}</p> </li></li>
+//</c:a:b:Hello>
+//
+//</ul>
+//`
+	b:=`<div>
+    <div>
+        <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+            <a class="navbar-brand" href="#">Navbar</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault"
+                    aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
 
-<li
-                    v-for="$groceryList"
-                    v-model="$todo"
-					@key="$click"
-					@click="$onClick"
-					:key="key.id"
-					class="a b c"
-					data-hello="hello"
-					v-focus=true
-            >
-hello
-{{$moke}}
+            <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+                <ul class="navbar-nav mr-auto">
+                    <li class="nav-item active">
+                        <a class="nav-link" href="#">Home <span class="sr-only">(current)</span></a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Link</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link disabled" href="#">Disabled</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="https://example.com" id="dropdown01"
+                           data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Dropdown</a>
+                        <div class="dropdown-menu" aria-labelledby="dropdown01">
+                            <a class="dropdown-item" href="#">Action</a>
+                            <a class="dropdown-item" href="#">Another action</a>
+                            <a class="dropdown-item" href="#">Something else here</a>
+                        </div>
+                    </li>
+                </ul>
+                <form class="form-inline my-2 my-lg-0">
+                    <input class="form-control mr-sm-2" type="text" placeholder="Search" aria-label="Search"/>
+                    <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Search</button>
+                </form>
+            </div>
+        </nav>
+        <div id="app-4">
+            <ol>
+                <li v-for="todo in todos">
+                    {{ todo.text }}
+                </li>
+            </ol>
+        </div>
+        <div style="float: right;">
+            <label>
+            <textarea style="font-family: monospace;" cols="70" rows="14"
+                      @input="texthandler">{vecty-field:Input}</textarea>
+            </label>
+        </div>
 
-<li> {{{$world}}} </li>
-<input/>
+        <div id="app">
+            {{ message }}
+        </div>
 
-</li>
+        <div id="app-2">
+            <span v-bind:title="message">鼠标悬停几秒钟查看此处动态绑定的提示信息！</span>
+        </div>
 
+        <div id="app-3">
+            <p v-if="seen">现在你看到我了</p>
+        </div>
 
-<p v-if="$hello>0"></p>
-<p @click="a"></p>
-<p @click="a1"></p>
-<p data-click-sss="name?:'hello'"></p>
-<p data-click-sss="name>0?world:'hello'"></p>
+        <div id="app-5">
+            <p>{{ message }}</p>
+            <button v-on:click="reverseMessage">反转消息</button>
+            <button @click="reverseMessage">反转消息</button>
+            <div id="app-5">
+                <p>{{ message }}</p>
+                <button v-on:click="reverseMessage">反转消息</button>
+            </div>
 
-<p>hello1111 {{name>0?world:hello}}</p>
-<p>hello1111 {{"hello1111"+hello}}</p>
+            <div id="app-6">
+                <p>{{ message }}</p>
+                <input v-model="message">
+            </div>
 
-<li> <li> <p>测试 {{hello}}</p> </li></li>
-<li> <li> <p>测试</p> </li></li>
+            <div id="app-7">
+                <ol>
+                    <!--
+                      现在我们为每个 todo-item 提供 todo 对象
+                      todo 对象是变量，即其内容可以是动态的。
+                      我们也需要为每个组件提供一个“key”，稍后再
+                      作详细解释。
+                    -->
+                    <c:b:todo-item
+                            v-for="item in groceryList"
+                            v-bind:todo="item"
+                            v-bind:key="item.id"
+                    >
+                        <div id="app">
+                            <c:app-nav></c:app-nav>
+                            <c:app-view>
+                                <c:app-sidebar></c:app-sidebar>
+                                <c:app-content></c:app-content>
+                            </c:app-view>
+                        </div>
 
-<c:a:b:Hello
-                    v-for="$groceryList"
-                    v-model="$todo"
-					@key="$click"
-					@click="$onClick"
-					:key="key.id"
-					class="a b c"
-					data-hello="hello"
-					v-focus=true
-            >
-		<li> <li> <p>测试</p> </li></li>
-		<li> <li> <p>测试 {{hhhh}}</p> </li></li>
-</c:a:b:Hello>
+                    </c:b:todo-item>
+                </ol>
+            </div>
 
-</ul>
+        </div>
+
+        <div id="app-6">
+            <p>{{ message }}</p>
+            <input v-model="message">
+        </div>
+        <ol>
+            <!-- 创建一个 todo-item 组件的实例 -->
+            <c:todo-item></c:todo-item>
+        </ol>
+        <div id="app-7">
+            <ol>
+                <!--
+                  现在我们为每个 todo-item 提供 todo 对象
+                  todo 对象是变量，即其内容可以是动态的。
+                  我们也需要为每个组件提供一个“key”，稍后再
+                  作详细解释。
+                -->
+                <c:todo-item
+                        v-for="item in groceryList"
+                        v-bind:todo="item"
+                        v-bind:key="item.id"
+                ></c:todo-item>
+            </ol>
+        </div>
+        <div id="app">
+            <c:app-nav></c:app-nav>
+            <c:app-view>
+                <c:app-sidebar></c:app-sidebar>
+                <c:app-content></c:app-content>
+            </c:app-view>
+        </div>
+    </div>
+</div>
 `
 
-	v := vue2vecty.NewTranspiler(bytes.NewBufferString(a), "github.com/pubgo/vue2vecty", "Test", "views")
+	v := vue2vecty.NewTranspiler(bytes.NewBufferString(b), "github.com/pubgo/vue2vecty", "Test", "views")
 	fmt.Println(v.Code())
 }
 
