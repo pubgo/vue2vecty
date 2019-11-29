@@ -7,6 +7,7 @@ import (
 	"github.com/gopherjs/vecty/elem"
 	"github.com/gopherjs/vecty/event"
 	"github.com/gopherjs/vecty/prop"
+	"github.com/pubgo/g/pkg"
 	"honnef.co/go/js/dom/v2"
 )
 
@@ -187,18 +188,50 @@ func (t *Test) Render() vecty.ComponentOrHTML {
 	)
 }
 
-func (t *Test) Render1() vecty.ComponentOrHTML {
+func (t *Test) Render() vecty.ComponentOrHTML {
 	return elem.UnorderedList(func() (e vecty.List) {
 		for key, value := range t.groceryList {
 			e = append(e, elem.ListItem(vecty.Markup(prop.Value(t.todo), event.Input(func(e *vecty.Event) {
 				t.todo = dom.WrapEvent(e.Target).Target().TextContent()
 				dom.WrapEvent(e.Target).PreventDefault()
-			}), event.Key(t.click), event.Click(t.onClick), vecty.Data("hello", hello)), vecty.Text(t.moke), elem.ListItem(vecty.UnsafeHTML(t.world)), elem.Input()))
+			}), event.Key(t.click), event.Click(t.onClick), vecty.Data("key", key.id), vecty.Class("a", "b", "c"), vecty.Data("hello", hello)), vecty.Text(t.moke), elem.ListItem(vecty.Markup(vecty.UnsafeHTML(t.world))), elem.Input()))
 		}
 		return
-	}(), vecty.If(t.hello > 0, elem.Paragraph(vecty.Markup())), elem.Paragraph(vecty.Markup(event.Click(func() {
-		a = 1
-	}))), elem.Paragraph(vecty.Markup(event.Click(func() {
-		a += 1
-	}))))
+	}(), vecty.If(t.hello > 0, elem.Paragraph(vecty.Markup())), elem.Paragraph(vecty.Markup(event.Click(a))), elem.Paragraph(vecty.Markup(event.Click(a1))), elem.Paragraph(vecty.Markup(vecty.Data("click-sss", func() string {
+		if pkg.IsNone(name) {
+			return "hello"
+		} else {
+			return name
+		}
+	}()))), elem.Paragraph(vecty.Markup(vecty.Data("click-sss", func() string {
+		if name > 0 {
+			return world
+		} else {
+			return "hello"
+		}
+	}()))), elem.Paragraph(vecty.Text("hello1111 "+func() string {
+		if name > 0 {
+			return world
+		} else {
+			return hello
+		}
+	}())), elem.Paragraph(vecty.Text("hello1111 "+"hello1111"+hello)), elem.ListItem(elem.ListItem(elem.Paragraph(vecty.Text("测试 "+hello)))), elem.ListItem(elem.ListItem(elem.Paragraph(vecty.Text("测试")))), func() (e vecty.List) {
+		for key, value := range t.groceryList {
+			e = append(e, b.Hello(map[string]interface{}{
+				"Hello":   hello,
+				"Key":     key.id,
+				"OnClick": t.onClick,
+				"OnInput": func(v string) {
+					t.todo = v
+				},
+				"OnKey": t.click,
+				"Value": t.todo,
+			}, prop.Value(t.todo), event.Input(func(e *vecty.Event) {
+				t.todo = dom.WrapEvent(e.Target).Target().TextContent()
+				dom.WrapEvent(e.Target).PreventDefault()
+			}), event.Key(t.click), event.Click(t.onClick), vecty.Data("key", key.id), vecty.Class("a", "b", "c"), vecty.Data("hello", hello), elem.ListItem(elem.ListItem(elem.Paragraph(vecty.Text("测试"))))))
+		}
+		return
+	}())
 }
+

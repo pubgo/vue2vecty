@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/dave/jennifer/jen"
+	"github.com/pubgo/g/logs"
 	"github.com/pubgo/g/xerror"
 	"github.com/pubgo/vue2vecty/vue2vecty"
 	"github.com/pubgo/vue2vecty/xml"
+	"io"
 	"os"
 	"regexp"
 	"strings"
@@ -31,8 +33,22 @@ func TestName(t *testing.T) {
 sss
 {{}}
 
+<c:a:b:d
+                    v-for="$groceryList"
+                    v-model="$todo"
+					@key="$click"
+					@click="$onClick"
+					:key="key.id"
+					class="a b c"
+					data-hello="hello"
+					v-focus=true
+            >
+</c:a:b:d>
+
 <li></li>
 <input/>
+
+<p data-click-sss=name>0?world:"hello"></p>
 
 </b:a:todo-item>`
 
@@ -42,7 +58,10 @@ sss
 	decoder.Entity = xml.HTMLEntity
 
 	for {
-		token := xerror.PanicErr(decoder.Token()).(xml.Token)
+		token, err := decoder.Token()
+		if err == io.EOF {
+			break
+		}
 
 		switch token := token.(type) {
 		case xml.StartElement:
@@ -132,7 +151,7 @@ func TestName3(t *testing.T) {
                     v-model="$todo"
 					@key="$click"
 					@click="$onClick"
-					:key="item.id"
+					:key="key.id"
 					class="a b c"
 					data-hello="hello"
 					v-focus=true
@@ -147,8 +166,29 @@ hello
 
 
 <p v-if="$hello>0"></p>
-<p @click="a=1"></p>
-<p @click="a+=1"></p>
+<p @click="a"></p>
+<p @click="a1"></p>
+<p data-click-sss="name?:'hello'"></p>
+<p data-click-sss="name>0?world:'hello'"></p>
+
+<p>hello1111 {{name>0?world:hello}}</p>
+<p>hello1111 {{"hello1111"+hello}}</p>
+
+<li> <li> <p>测试 {{hello}}</p> </li></li>
+<li> <li> <p>测试</p> </li></li>
+
+<c:a:b:Hello
+                    v-for="$groceryList"
+                    v-model="$todo"
+					@key="$click"
+					@click="$onClick"
+					:key="key.id"
+					class="a b c"
+					data-hello="hello"
+					v-focus=true
+            >
+		<li> <li> <p>测试</p> </li></li>
+</c:a:b:Hello>
 
 </ul>
 `
@@ -170,19 +210,40 @@ func TestA5(t *testing.T) {
 	fmt.Println(ternary.FindStringSubmatch("a>b?:22"))
 
 	//var ternaryBrace = xerror.PanicErr(regexp.Compile(`.*{{{(.+)}}}.*`)).(*regexp.Regexp)
-	var twoBrace = xerror.PanicErr(regexp.Compile(`.*{{(.+)}}.*`)).(*regexp.Regexp)
-	fmt.Println(twoBrace.FindStringSubmatch(`sss{{{<li>sss</li>}}}sss`))
-	fmt.Println(jen.Lit("11").Render(os.Stdout))
-	fmt.Println(jen.Id("11").Render(os.Stdout))
-	fmt.Println(jen.Lit(11).Render(os.Stdout))
-	fmt.Println(jen.Lit(`'nn+1/2'`).Render(os.Stdout))
-	fmt.Println(jen.Id(`"nn"+1/2`).Render(os.Stdout))
+	var twoBrace = xerror.PanicErr(regexp.Compile(`(.*){{(.+)}}(.*)`)).(*regexp.Regexp)
+	logs.Debug(twoBrace.FindStringSubmatch(`sss{{<li>sss</li>}}sss`))
+	logs.Debug(twoBrace.FindStringSubmatch(`sss{{}}sss`))
+	logs.Debug(twoBrace.MatchString(`sss{{}}sss`))
+	logs.Debug(twoBrace.FindStringSubmatch(`sss{{<li>sss</li>}}`))
+	logs.Debug(twoBrace.FindStringSubmatch(`{{<li>sss</li>}}sss`))
+	logs.Debug(twoBrace.FindStringSubmatch(`{{<li>sss</li>}}`))
 
-	var forReg = xerror.PanicErr(regexp.Compile(`,|\s+in\s+`)).(*regexp.Regexp)
-	fmt.Println(forReg.Split(`m`, -1))
-	fmt.Println(forReg.Split(`a in m`, -1))
-	fmt.Println(forReg.Split(`a,b in m`, -1))
-	fmt.Println(forReg.Split(`a,b,i in m`, -1))
-	fmt.Println(jen.Id(strings.ToTitle("id-hello")).Render(os.Stdout))
-	fmt.Println(jen.Id(`"hello"`).Render(os.Stdout))
+	//fmt.Println(jen.Lit("11").Render(os.Stdout))
+	//fmt.Println(jen.Id("11").Render(os.Stdout))
+	//fmt.Println(jen.Lit(11).Render(os.Stdout))
+	//fmt.Println(jen.Lit(`'nn+1/2'`).Render(os.Stdout))
+	//fmt.Println(jen.Id(`"nn"+1/2`).Render(os.Stdout))
+	//
+	//var forReg = xerror.PanicErr(regexp.Compile(`,|\s+in\s+`)).(*regexp.Regexp)
+	//fmt.Println(forReg.Split(`m`, -1))
+	//fmt.Println(forReg.Split(`a in m`, -1))
+	//fmt.Println(forReg.Split(`a,b in m`, -1))
+	//fmt.Println(forReg.Split(`a,b,i in m`, -1))
+	//fmt.Println(jen.Id(strings.ToTitle("id-hello")).Render(os.Stdout))
+	//fmt.Println(jen.Id(`"hello"`).Render(os.Stdout))
+	//
+	//var ternaryReg = xerror.PanicErr(regexp.Compile(`(.+)\?(.+):(.+)`)).(*regexp.Regexp)
+	//fmt.Println(ternaryReg.MatchString(`name>0?world:hello`))
+	//fmt.Println(ternaryReg.FindStringSubmatch(`name>0?world:hello`))
+	//
+	//css, err := parser.ParseDeclarations("width: 0%;")
+	//xerror.PanicM(err, "css parsing error")
+	//
+	//for _, dec := range css {
+	//	if dec.Important {
+	//		dec.Value += "!important"
+	//	}
+	//	jen.Lit(dec.Property).Render(os.Stdout)
+	//	fmt.Println(dec.Property,dec.Value)
+	//}
 }

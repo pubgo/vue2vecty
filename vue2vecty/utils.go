@@ -10,6 +10,14 @@ import (
 	"strings"
 )
 
+var trim = strings.TrimSpace
+var call = jen.Options{
+	Open:      "(",
+	Close:     ")",
+	Separator: ",",
+	Multi:     true,
+}
+
 func createStruct(packageName, componentName string) *jen.File {
 	file := jen.NewFile(packageName)
 	file.PackageComment("This file was created with https://github.com/pubgo/vue2vecty")
@@ -23,16 +31,15 @@ func createStruct(packageName, componentName string) *jen.File {
 }
 
 var ternaryReg = xerror.PanicErr(regexp.Compile(`(.+)\?(.+):(.+)`)).(*regexp.Regexp)
-var ternaryBrace = xerror.PanicErr(regexp.Compile(`.*{{{(.+)}}}.*`)).(*regexp.Regexp)
-var twoBrace = xerror.PanicErr(regexp.Compile(`.*{{(.+)}}.*`)).(*regexp.Regexp)
+var ternaryBrace = xerror.PanicErr(regexp.Compile(`(.*){{{(.+)}}}(.*)`)).(*regexp.Regexp)
+var twoBrace = xerror.PanicErr(regexp.Compile(`(.*){{(.+)}}(.*)`)).(*regexp.Regexp)
 var forReg = xerror.PanicErr(regexp.Compile(`,|\s+in\s+`)).(*regexp.Regexp)
 var _for = func(file *jen.File, child *jen.Statement, value string) *jen.Statement {
 	xerror.PanicT(value == "", "params is zero")
 
 	var params []string
 	for _, p := range forReg.Split(value, -1) {
-		p = strings.TrimSpace(p)
-		if p == "" {
+		if p = trim(p); p == "" {
 			continue
 		}
 		params = append(params, p)
@@ -53,7 +60,7 @@ var _for = func(file *jen.File, child *jen.Statement, value string) *jen.Stateme
 
 	xerror.PanicT(s == nil, "statements error")
 
-	return jen.Func().Params().Params(jen.Id("e").Qual("github.com/gopherjs/vecty", "List")).BlockFunc(func(g *jen.Group) {
+	return jen.Func().Params().Params(jen.Id("e").Qual(vectyPackage, "List")).BlockFunc(func(g *jen.Group) {
 		g.For(s.Op(":=").Range().Add(exp(file, params[len(params)-1]))).BlockFunc(func(f *jen.Group) {
 			f.Id("e=").Append(jen.Id("e"), child)
 		})
@@ -61,8 +68,65 @@ var _for = func(file *jen.File, child *jen.Statement, value string) *jen.Stateme
 	}).Call()
 }
 
+func styleExp(file *jen.File, g *jen.Group, e string) {
+	e = trim(e)
+
+	switch {
+	case e == "":
+		return
+	case len(e) > 2 && e[:1] == "{" && e[len(e)-1:] == "}":
+		for _, c := range strings.Split(trim(e[1:len(e)-1]), ",") {
+			if c = trim(c); c == "" {
+				continue
+			}
+
+			if _c := strings.Split(c, ":"); len(_c) == 2 && trim(_c[0]) != "" && trim(_c[1]) != "" {
+				g.Qual(vectyPackage, "Style").Call(jen.Lit(trim(_c[0])), exp(file, _c[1]))
+			}
+		}
+		return
+	default:
+		return
+	}
+}
+
+func classExp(file *jen.File, g *jen.Group, e string) {
+	e = trim(e)
+
+	switch {
+	case e == "":
+		return
+	case len(e) > 2 && e[:1] == "[" && e[len(e)-1:] == "]": //[]
+		for _, c := range strings.Split(trim(e[1:len(e)-1]), ",") {
+			if c = trim(strings.Trim(strings.Trim(trim(c), "{"), "}")); c == "" {
+				continue
+			}
+
+			if _c := strings.Split(c, ":"); len(_c) == 2 && trim(_c[0]) != "" && trim(_c[1]) != "" {
+				g.Qual(vectyPackage, "MarkupIf").Call(exp(file, _c[1]), jen.Qual(vectyPackage, "Class").Call(jen.Lit(trim(_c[0]))))
+			} else {
+				g.Qual(vectyPackage, "Class").Call(exp(file, c))
+			}
+		}
+		return
+	case len(e) > 2 && e[:1] == "{" && e[len(e)-1:] == "}": // {}
+		for _, c := range strings.Split(trim(e[1:len(e)-1]), ",") {
+			if c = trim(c); c == "" {
+				continue
+			}
+
+			if _c := strings.Split(c, ":"); len(_c) == 2 && trim(_c[0]) != "" && trim(_c[1]) != "" {
+				g.Id("vecty.ClassMap").Call(jen.Lit(trim(_c[0])), exp(file, _c[1]))
+			}
+		}
+		return
+	default:
+		return
+	}
+}
+
 func exp(file *jen.File, e string) *jen.Statement {
-	e = strings.TrimSpace(e)
+	e = trim(e)
 
 	switch {
 	case e == "":
@@ -70,45 +134,66 @@ func exp(file *jen.File, e string) *jen.Statement {
 	case strings.Contains(e, "$"):
 		return exp(file, strings.ReplaceAll(e, "$", "t."))
 	case len(e) > 2 && e[0:1] == "'" && e[len(e)-1:] == "'":
-		return exp(file, e[1:len(e)-1])
-	case strings.Contains(e, "{{{") && strings.Contains(e, "}}}") && ternaryBrace.MatchString(e):
+		return exp(file, fmt.Sprintf(`"%s"`, e[1:len(e)-1]))
+	case len(e) > 2 && e[0:1] == `"` && e[len(e)-1:] == `"`:
+		return jen.Id(e)
+	case strings.Contains(e, "{{{") && strings.Contains(e, "}}}") && ternaryBrace.MatchString(e): //{{{}}}
 		_d := ternaryBrace.FindStringSubmatch(e)
-		if len(_d) == 1 {
-			return nil
-		}
-		return jen.Qual(vectyPackage, "UnsafeHTML").Call(exp(file, _d[1]))
-	case twoBrace.MatchString(e):
+		return jen.Qual(vectyPackage, "Markup").Call(jen.Qual(vectyPackage, "UnsafeHTML").CallFunc(func(g *jen.Group) {
+			_exp := exp(file, trim(_d[2]))
+			if _d[1] == "" && _d[3] == "" {
+				g.Add(_exp)
+			}
+
+			if _d[1] == "" && _d[3] != "" {
+				g.Add(_exp).Op("+").Lit(_d[3])
+			}
+
+			if _d[1] != "" && _d[3] == "" {
+				g.Lit(_d[1]).Op("+").Add(_exp)
+			}
+		}))
+	case twoBrace.MatchString(e): //{{}}
 		_d := twoBrace.FindStringSubmatch(e)
-		if len(_d) == 1 {
-			return nil
-		}
-		return jen.Qual(vectyPackage, "Text").Call(exp(file, _d[1]))
-	case len(e) > 2 && e[:1] == "[" && e[len(e)-1:] == "]":
+		return jen.Qual(vectyPackage, "Text").CallFunc(func(g *jen.Group) {
+			_exp := exp(file, trim(_d[2]))
+			if _d[1] == "" && _d[3] == "" {
+				g.Add(_exp)
+			}
+
+			if _d[1] == "" && _d[3] != "" {
+				g.Add(_exp).Op("+").Lit(_d[3])
+			}
+
+			if _d[1] != "" && _d[3] == "" {
+				g.Lit(_d[1]).Op("+").Add(_exp)
+			}
+		})
+	case len(e) > 2 && e[:1] == "[" && e[len(e)-1:] == "]": //[]
 		return nil
-	case len(e) > 2 && e[:1] == "{" && e[len(e)-1:] == "}":
+	case len(e) > 2 && e[:1] == "{" && e[len(e)-1:] == "}": // {}
 		return nil
 	case len(strings.Split(e, "?:")) == 2:
 		_s := strings.Split(e, "?:")
-		s0 := strings.TrimSpace(_s[0])
-		s1 := strings.TrimSpace(_s[1])
-		file.ImportName("github.com/pubgo/g/pkg", "pkg")
+		s0 := trim(_s[0])
+		s1 := trim(_s[1])
 		return jen.Func().Params().String().BlockFunc(func(g *jen.Group) {
 			g.If(jen.Qual("github.com/pubgo/g/pkg", "IsNone").Call(exp(file, s0))).BlockFunc(func(g *jen.Group) {
-				g.Return(exp(file, s0))
-			}).Else().BlockFunc(func(g *jen.Group) {
 				g.Return(exp(file, s1))
+			}).Else().BlockFunc(func(g *jen.Group) {
+				g.Return(exp(file, s0))
 			})
 		}).Call()
 	case ternaryReg.MatchString(e):
 		_s := ternaryReg.FindStringSubmatch(e)
-		s1 := strings.TrimSpace(_s[1])
-		s2 := strings.TrimSpace(_s[2])
-		s3 := strings.TrimSpace(_s[3])
+		s1 := trim(_s[1])
+		s2 := trim(_s[2])
+		s3 := trim(_s[3])
 		return jen.Func().Params().String().BlockFunc(func(g *jen.Group) {
 			g.If(exp(file, s1)).BlockFunc(func(g *jen.Group) {
-				g.Return(jen.Id(s2))
+				g.Return(exp(file, s2))
 			}).Else().BlockFunc(func(g *jen.Group) {
-				g.Return(jen.Id(s3))
+				g.Return(exp(file, s3))
 			})
 		}).Call()
 	case strings.Contains(e, "="):
@@ -119,10 +204,10 @@ func exp(file *jen.File, e string) *jen.Statement {
 }
 
 func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
-	ns := strings.TrimSpace(attr.Name.Space)
-	key := strings.TrimSpace(attr.Name.Local)
+	ns := trim(attr.Name.Space)
+	key := trim(attr.Name.Local)
 	key = strings.TrimLeft(key, ns)
-	value := strings.ReplaceAll(strings.TrimSpace(attr.Value), "$", "t.")
+	value := strings.ReplaceAll(trim(attr.Value), "$", "t.")
 
 	fmt.Println(ns, key, value)
 
@@ -132,6 +217,7 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 	case ns == "" && len(key) > 5 && key[:5] == "data-" && value != "":
 		key = key[5:]
 		if d != nil {
+			fmt.Println(key, "\n\n\n\n")
 			d[jen.Lit(strings.Title(key))] = exp(file, value)
 		}
 
@@ -141,13 +227,12 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 		return
 	case ns == "v-on" || key[0] == '@':
 		key = strings.ReplaceAll(strings.Title(key[1:]), "-", "")
-		//fmt.Println(g != nil, d != nil, ns, key, len(key), key[0] == '@',value, "\n\n")
 		if d != nil {
-			d[jen.Lit("On"+key)] = jen.Func().Block(exp(file, value)).Call()
+			d[jen.Lit("On"+key)] = exp(file, value)
 		}
 
 		if g != nil {
-			g.Qual("github.com/gopherjs/vecty/event", key).Call(exp(file, value))
+			g.Qual(vectyEventPackage, key).Call(exp(file, value))
 		}
 		return
 	case ns == "v-bind" || key[0] == ':':
@@ -160,37 +245,19 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 
 		switch key {
 		case "style":
-			css, err := parser.ParseDeclarations(value)
-			xerror.PanicM(err, "css parsing error")
-
-			for _, dec := range css {
-				if dec.Important {
-					dec.Value += "!important"
-				}
-				file.ImportName("github.com/gopherjs/vecty", "vecty")
-				g.Qual("github.com/gopherjs/vecty", "Style").Call(
-					jen.Lit(dec.Property),
-					jen.Lit(dec.Value),
-				)
-			}
-			return
-		case "v-html":
+			styleExp(file, g, value)
 			return
 		case "class":
-			file.ImportName("github.com/gopherjs/vecty", "vecty")
-			g.Qual("github.com/gopherjs/vecty", "Class").CallFunc(func(g *jen.Group) {
-				classes := strings.Split(value, " ")
-				for _, class := range classes {
-					if strings.HasPrefix(class, "{vecty-field:") {
-						field := strings.TrimLeft(class, "{vecty-field:")
-						field = field[:len(field)-1]
-						g.Add(jen.Id("p").Dot(field))
-					} else {
-						g.Lit(class)
-					}
-				}
-			})
+			classExp(file, g, value)
 			return
+		default:
+			if d != nil {
+				d[jen.Lit(strings.Title(key))] = exp(file, value)
+			}
+
+			if g != nil {
+				g.Qual(vectyPackage, "Data").Call(jen.Lit(key), exp(file, value))
+			}
 		}
 		return
 	case key == "v-model":
@@ -200,31 +267,30 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 		}
 
 		if d != nil {
-			d[jen.Id("Value")] = _exp
-			d[jen.Id("OnInput")] = jen.Func().Params(jen.Id("v").String()).BlockFunc(func(g *jen.Group) {
+			d[jen.Lit("Value")] = _exp
+			d[jen.Lit("OnInput")] = jen.Func().Params(jen.Id("v").String()).BlockFunc(func(g *jen.Group) {
 				g.Id(value).Op("=").Id("v")
 			})
 		}
 
 		if g != nil {
-			file.ImportName("github.com/gopherjs/vecty/prop", "prop")
-			file.ImportName("github.com/gopherjs/vecty/event", "event")
-			file.ImportName("honnef.co/go/js/dom/v2", "dom")
+			file.ImportName(vectyPropPackage, "prop")
+			file.ImportName(vectyEventPackage, "event")
+			file.ImportAlias("honnef.co/go/js/dom/v2", "dom")
 
-			g.Qual("github.com/gopherjs/vecty/prop", "Value").Call(_exp)
-			g.Qual("github.com/gopherjs/vecty/event", "Input").CallFunc(func(g *jen.Group) {
-				g.Func().Params(jen.Id("e").Op("*").Qual("github.com/gopherjs/vecty", "Event")).BlockFunc(func(g *jen.Group) {
-					// t.Value = dom.WrapEvent(event.Target).Target().TextContent()
-					// dom.WrapEvent(event.Target).PreventDefault()
-					g.Id(value).Op("=").Id("dom.WrapEvent(e.Target).Target().TextContent()")
-					g.Id("dom.WrapEvent(e.Target).PreventDefault()")
+			g.Qual(vectyPropPackage, "Value").Call(_exp)
+			g.Qual(vectyEventPackage, "Input").CallFunc(func(g *jen.Group) {
+				g.Func().Params(jen.Id("e").Op("*").Qual(vectyPackage, "Event")).BlockFunc(func(g *jen.Group) {
+					g.Id(value).Op("=").Qual("honnef.co/go/js/dom/v2", "WrapEvent(e.Target).Target().TextContent()")
+					g.Qual("honnef.co/go/js/dom/v2", "WrapEvent(e.Target).PreventDefault()")
 				})
 			})
 		}
 	case key == "v-html":
-		g.Qual("github.com/gopherjs/vecty", "UnsafeHTML").Call(exp(file, value))
+		g.Add(exp(file, "{{{"+value+"}}}"))
 		return
 	case key == "v-text":
+		g.Add(exp(file, "{{"+value+"}}"))
 		return
 	case key == "v-focus":
 		return
@@ -232,9 +298,11 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 		return
 	case key == "v-once":
 		return
-	case key == "class":
-		return
 	case key == "style":
+		if g == nil {
+			return
+		}
+
 		css, err := parser.ParseDeclarations(value)
 		xerror.PanicM(err, "css parsing error")
 
@@ -242,13 +310,39 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 			if dec.Important {
 				dec.Value += "!important"
 			}
-			file.ImportName("github.com/gopherjs/vecty", "vecty")
-			jen.Qual("github.com/gopherjs/vecty", "Style").Call(
+			g.Qual(vectyPackage, "Style").Call(
 				jen.Lit(dec.Property),
-				jen.Lit(dec.Value),
+				jen.Lit(exp(file, dec.Value)),
 			)
 		}
 		return
+	case key == "class":
+		if g == nil {
+			return
+		}
+
+		g.Qual(vectyPackage, "Class").CallFunc(func(g *jen.Group) {
+			if twoBrace.MatchString(value) {
+				_d := twoBrace.FindStringSubmatch(value)
+				g.Add(exp(file, trim(_d[2])))
+
+				for _, c := range strings.Split(_d[1]+" "+_d[3], " ") {
+					if trim(c) == "" {
+						continue
+					}
+
+					g.Lit(trim(c))
+				}
+			} else {
+				for _, c := range strings.Split(value, " ") {
+					if trim(c) == "" {
+						continue
+					}
+
+					g.Lit(trim(c))
+				}
+			}
+		})
 	default:
 		fmt.Println(ns, key, value, "ok")
 		return
@@ -257,28 +351,28 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 }
 
 func componentElement(file *jen.File, appPackage string, token xml.StartElement) *jen.Statement {
+	ts := strings.Split(trim(token.Name.Local), ":")[1:]
+	name := trim(ts[len(ts)-1])
+
 	appPackage += "/components"
-	ts := strings.Split(token.Name.Local, ":")
-	_l := len(ts)
-	name := ""
-	if _l == 1 {
-		name = ts[0]
-		file.ImportName(appPackage, "components")
-	} else if _l >= 2 {
-		name = ts[_l-1]
-		file.ImportName(appPackage+"/"+strings.Join(ts[:_l-1], "/"), ts[_l-2])
+	if len(ts) > 1 {
+		appPackage += "/" + strings.Join(ts[:len(ts)-1], "/")
+		file.ImportAlias(appPackage, ts[len(ts)-2])
+	} else {
+		file.ImportAlias(appPackage, "components")
 	}
 
-	name = strings.ReplaceAll(strings.Title(name), "-", "")
-	return jen.Qual(vectyPackage, name).CallFunc(func(g *jen.Group) {
-		g.Map(jen.String()).Interface().Values(jen.DictFunc(func(d jen.Dict) {
-			for _, v := range token.Attr {
-				componentAttr(file, d, nil, v)
-			}
-		}))
+	return jen.Qual(appPackage, strings.ReplaceAll(strings.Title(name), "-", "")).CallFunc(func(g *jen.Group) {
+		if len(token.Attr) > 0 {
+			g.Map(jen.String()).Interface().Values(jen.DictFunc(func(d jen.Dict) {
+				for _, v := range token.Attr {
+					componentAttr(file, d, nil, v)
+				}
+			}))
 
-		for _, v := range token.Attr {
-			componentAttr(file, nil, g, v)
+			for _, v := range token.Attr {
+				componentAttr(file, nil, g, v)
+			}
 		}
 	})
 }

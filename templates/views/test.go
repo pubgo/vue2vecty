@@ -42,4 +42,5 @@ type Test struct {
 
 	Markup []vecty.Applyer
 	Slot   []vecty.ComponentOrHTML
+	data   map[string]interface{}
 }
