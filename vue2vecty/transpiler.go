@@ -79,7 +79,6 @@ func (s *Transpiler) transcode() (err error) {
 			tag = strings.TrimLeft(tag, ns)
 
 			var ce *jen.Statement
-			var outer error
 			if strings.HasPrefix(ns, "c") {
 				ts := strings.Split(trim(token.Name.Local), ":")[1:]
 				name := trim(ts[len(ts)-1])
@@ -100,10 +99,6 @@ func (s *Transpiler) transcode() (err error) {
 								componentAttr(file, d, nil, v)
 							}
 						}))
-
-						//for _, v := range token.Attr {
-						//	componentAttr(file, nil, g, v)
-						//}
 					}
 
 					for {
@@ -113,12 +108,11 @@ func (s *Transpiler) transcode() (err error) {
 							if err == xerror.ErrDone {
 								break
 							}
-							outer = err
+							xerror.Panic(err)
 							return
 						}
 						if c != nil {
 							g.Add(c...)
-							//d[jen.Id("Slot")] = jen.Qual(vectyPackage, "List").Call(c...)
 						}
 					}
 				})
@@ -135,13 +129,12 @@ func (s *Transpiler) transcode() (err error) {
 					}
 
 					for {
-						// 这是 子元素
 						c, err := _transcode(decoder)
 						if err != nil {
 							if err == xerror.ErrDone {
 								break
 							}
-							outer = err
+							xerror.Panic(err)
 							return
 						}
 						if c != nil {
@@ -149,9 +142,6 @@ func (s *Transpiler) transcode() (err error) {
 						}
 					}
 				})
-				if outer != nil {
-					return nil, outer
-				}
 			}
 
 			for _, attr := range token.Attr {

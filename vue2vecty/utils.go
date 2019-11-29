@@ -209,15 +209,12 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 	key = strings.TrimLeft(key, ns)
 	value := strings.ReplaceAll(trim(attr.Value), "$", "t.")
 
-	fmt.Println(ns, key, value)
-
 	switch {
 	case ns == "" && (key == "v-for" || key == "xmlns" || key == "v-if"):
 		return
 	case ns == "" && len(key) > 5 && key[:5] == "data-" && value != "":
 		key = key[5:]
 		if d != nil {
-			fmt.Println(key, "\n\n\n\n")
 			d[jen.Lit(strings.Title(key))] = exp(file, value)
 		}
 
