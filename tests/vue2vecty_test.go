@@ -188,6 +188,7 @@ hello
 					v-focus=true
             >
 		<li> <li> <p>测试</p> </li></li>
+		<li> <li> <p>测试 {{hhhh}}</p> </li></li>
 </c:a:b:Hello>
 
 </ul>

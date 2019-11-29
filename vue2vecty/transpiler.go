@@ -93,6 +93,7 @@ func (s *Transpiler) transcode() (err error) {
 				}
 
 				ce = jen.Qual(_appPackage, strings.ReplaceAll(strings.Title(name), "-", "")).CallFunc(func(g *jen.Group) {
+
 					if len(token.Attr) > 0 {
 						g.Map(jen.String()).Interface().Values(jen.DictFunc(func(d jen.Dict) {
 							for _, v := range token.Attr {
@@ -100,9 +101,9 @@ func (s *Transpiler) transcode() (err error) {
 							}
 						}))
 
-						for _, v := range token.Attr {
-							componentAttr(file, nil, g, v)
-						}
+						//for _, v := range token.Attr {
+						//	componentAttr(file, nil, g, v)
+						//}
 					}
 
 					for {
@@ -117,6 +118,7 @@ func (s *Transpiler) transcode() (err error) {
 						}
 						if c != nil {
 							g.Add(c...)
+							//d[jen.Id("Slot")] = jen.Qual(vectyPackage, "List").Call(c...)
 						}
 					}
 				})

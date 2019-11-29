@@ -18,17 +18,14 @@ func init() {
 				"Value":   "",
 			},
 				vecty.Text(""),
-				vecty.Markup(),
 			),
 			vecty.Text(""),
-			vecty.Markup(),
 		),
 		vecty.Text(""),
-		vecty.Markup(),
 	)
 }
 
-func TestC(data map[string]interface{}, child ...vecty.MarkupOrChild) vecty.ComponentOrHTML {
+func TestC(data map[string]interface{}, slot ...vecty.ComponentOrHTML) vecty.ComponentOrHTML {
 	return &Test{}
 }
 
@@ -40,7 +37,7 @@ type Test struct {
 	hello string
 	Value string
 
+	Slot   vecty.List
 	Markup []vecty.Applyer
-	Slot   []vecty.ComponentOrHTML
 	data   map[string]interface{}
 }

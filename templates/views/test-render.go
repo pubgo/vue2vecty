@@ -226,12 +226,11 @@ func (t *Test) Render() vecty.ComponentOrHTML {
 				},
 				"OnKey": t.click,
 				"Value": t.todo,
-			}, prop.Value(t.todo), event.Input(func(e *vecty.Event) {
-				t.todo = dom.WrapEvent(e.Target).Target().TextContent()
-				dom.WrapEvent(e.Target).PreventDefault()
-			}), event.Key(t.click), event.Click(t.onClick), vecty.Data("key", key.id), vecty.Class("a", "b", "c"), vecty.Data("hello", hello), elem.ListItem(elem.ListItem(elem.Paragraph(vecty.Text("测试"))))))
+			}, elem.ListItem(elem.ListItem(elem.Paragraph(vecty.Text("测试")))), elem.ListItem(elem.ListItem(elem.Paragraph(vecty.Text("测试"))))))
 		}
 		return
 	}())
 }
+
+
 
