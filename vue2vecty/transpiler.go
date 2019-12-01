@@ -51,11 +51,11 @@ func (s *Transpiler) transcode() (err error) {
 	file.PackageComment("This file was created with https://github.com/pubgo/factor")
 	file.PackageComment("using https://jsgo.io/dave/html2vecty")
 	file.ImportNames(map[string]string{
-		"github.com/gopherjs/vecty":       "vecty",
-		"github.com/gopherjs/vecty/elem":  "elem",
-		"github.com/gopherjs/vecty/prop":  "prop",
-		"github.com/gopherjs/vecty/event": "event",
-		"github.com/gopherjs/vecty/style": "style",
+		vectyPackage:      "vecty",
+		vectyElemPackage:  "elem",
+		vectyPropPackage:  "prop",
+		vectyEventPackage: "event",
+		vectyStylePackage: "style",
 	})
 
 	decoder := xml.NewDecoder(bytes.NewBufferString(s.html))
@@ -73,18 +73,18 @@ func (s *Transpiler) transcode() (err error) {
 		}
 		xerror.Panic(err)
 
+		var ce *jen.Statement
+		var _appPackage = vectyElemPackage
+
 		switch token := token.(type) {
 		case xml.StartElement:
-			ns := strings.TrimSpace(token.Name.Space)
-			tag := strings.TrimSpace(token.Name.Local)
-			tag = strings.TrimLeft(tag, ns)
-
-			var ce *jen.Statement
-			if strings.HasPrefix(ns, "c") {
-				ts := strings.Split(trim(token.Name.Local), ":")[1:]
+			tag := trim(token.Name.Local)
+			tagName, ok := elemNames[tag]
+			if !ok {
+				ts := strings.Split(tag, ":")
 				name := trim(ts[len(ts)-1])
 
-				_appPackage := s.appPackage + "/components"
+				_appPackage = s.appPackage + "/components"
 				if len(ts) > 1 {
 					_appPackage += "/" + strings.Join(ts[:len(ts)-1], "/")
 					file.ImportAlias(_appPackage, ts[len(ts)-2])
@@ -93,7 +93,6 @@ func (s *Transpiler) transcode() (err error) {
 				}
 
 				ce = jen.Qual(_appPackage, strings.ReplaceAll(strings.Title(name), "-", "")).CallFunc(func(g *jen.Group) {
-
 					if len(token.Attr) > 0 {
 						g.Map(jen.String()).Interface().Values(jen.DictFunc(func(d jen.Dict) {
 							for _, v := range token.Attr {
@@ -103,7 +102,6 @@ func (s *Transpiler) transcode() (err error) {
 					}
 
 					for {
-						// 这是 子元素
 						c, err := _transcode(decoder)
 						if err != nil {
 							if err == xerror.ErrDone {
@@ -118,9 +116,7 @@ func (s *Transpiler) transcode() (err error) {
 					}
 				})
 			} else {
-				vectyFunction, ok := elemNames[tag]
-				xerror.PanicT(!ok, "element(%s) not found", tag)
-				ce = jen.Qual(vectyElemPackage, vectyFunction).CallFunc(func(g *jen.Group) {
+				ce = jen.Qual(_appPackage, tagName).CallFunc(func(g *jen.Group) {
 					if len(token.Attr) > 0 {
 						g.Qual(vectyPackage, "Markup").CallFunc(func(g *jen.Group) {
 							for _, v := range token.Attr {
@@ -146,10 +142,10 @@ func (s *Transpiler) transcode() (err error) {
 			}
 
 			for _, attr := range token.Attr {
-				ns := strings.TrimSpace(attr.Name.Space)
-				key := strings.TrimSpace(attr.Name.Local)
+				ns := trim(attr.Name.Space)
+				key := trim(attr.Name.Local)
 				key = strings.TrimLeft(key, ns)
-				value := strings.TrimSpace(attr.Value)
+				value := trim(attr.Value)
 
 				if ns == "" && (key == "v-if" || key == "v-show") && value != "" {
 					ce = jen.Qual(vectyPackage, "If").Call(exp(file, value), ce)
@@ -157,26 +153,25 @@ func (s *Transpiler) transcode() (err error) {
 				}
 
 				if ns == "" && key == "v-for" {
-					ce = _for(file, ce, value)
+					ce = forExp(file, ce, value)
 					break
 				}
 			}
 
 			return []jen.Code{ce}, nil
 		case xml.CharData:
-			e := trim(string(token))
-			if e == "" {
-				return nil, nil
-			}
 
-			if ternaryBrace.MatchString(e) || twoBrace.MatchString(e) {
-				if _exp := exp(file, string(token)); _exp != nil {
-					file.ImportName(vectyPackage, "vecty")
-					return []jen.Code{_exp}, nil
+			if e := trim(string(token)); e != "" {
+				if ternaryBrace.MatchString(e) || twoBrace.MatchString(e) {
+					if _exp := exp(file, string(token)); _exp != nil {
+						return []jen.Code{_exp}, nil
+					}
+					return nil, nil
 				}
-			} else {
+				file.ImportName(vectyPackage, "vecty")
 				return []jen.Code{jen.Qual(vectyPackage, "Text").Call(jen.Lit(e))}, nil
 			}
+			return nil, nil
 		case xml.EndElement:
 			return nil, xerror.ErrDone
 		case xml.Comment:
@@ -223,4 +218,9 @@ func (s *Transpiler) transcode() (err error) {
 	xerror.Panic(file.Render(buf))
 	s.code = buf.String()
 	return
+}
+
+//Hello
+func Hello () {
+
 }

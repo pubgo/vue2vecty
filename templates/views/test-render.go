@@ -7,7 +7,6 @@ import (
 	"github.com/gopherjs/vecty/elem"
 	"github.com/gopherjs/vecty/event"
 	"github.com/gopherjs/vecty/prop"
-	"github.com/pubgo/g/pkg"
 	"honnef.co/go/js/dom/v2"
 )
 
@@ -31,206 +30,32 @@ func init() {
 }
 
 func (t *Test) Render() vecty.ComponentOrHTML {
-	return elem.Body(
-		elem.Heading1(
-			vecty.Text("html2vecty"),
-		),
-		elem.Paragraph(
-			vecty.Text("Enter HTML here and the vecty syntax will appear opposite."),
-		),
-		func() (e vecty.List) {
-			for k := range t.Data {
-				e = append(e, elem.Heading2(vecty.Text("Class attributes"), vecty.Markup(
-					vecty.Style("border", t.Data[k]),
-					vecty.Style("color", "red!important"),
-				)))
-			}
-			return
-		}(),
-		vecty.If(len("") > 0, elem.Heading2(vecty.Text("Class attributes"))),
-		func() vecty.ComponentOrHTML {
-			//dom.GetWindow().AddEventListener("test-input-time", false, func(e dom.Event) {
-			//	t.hello = e.Target().TextContent()
-			//	vecty.Rerender(t)
-			//})
-			c := &Test{
-				OnInput: func(s string) {
-					t.Value = s
-				},
-				Value: t.Value,
-			}
-
-			c.Markup = append(c.Markup, vecty.Markup())
-			c.Slot = append(c.Slot, vecty.Text(""))
-
-			return c
-		}(),
-		&Test{},
-		elem.Paragraph(
-			vecty.Markup(
-				vecty.Class("foo", "bar", "baz"),
-				vecty.MarkupIf(len("") > 0, vecty.Class("foo", "bar", "baz")),
-				event.Click(func(i *vecty.Event) {
-					dom.GetWindow().DispatchEvent(dom.WrapEvent(i.Target))
-					dom.WrapEvent(i.Target).PreventDefault()
-				}),
-			),
-		),
-		elem.Heading2(
-			vecty.Text("Style attributes"),
-		),
-		elem.Paragraph(
-			vecty.Markup(
-				vecty.Style("border", "2px"),
-				vecty.Style("color", "red!important"),
-			),
-		),
-		elem.Heading2(
-			vecty.Text("Special properties"),
-		),
-		elem.Input(
-			vecty.Markup(
-				prop.Type(prop.TypeCheckbox),
-				prop.Checked(true),
-				prop.Autofocus(true),
-				prop.Value(t.Value),
-				event.Input(func(event *vecty.Event) {
-					t.Value = dom.WrapEvent(event.Target).Target().TextContent()
-					dom.WrapEvent(event.Target).PreventDefault()
-					// $emit(t.Input, t.Value)
-					prop.Value()
-				}),
-			),
-
-		),
-		elem.Anchor(
-			vecty.Markup(
-				prop.Href("href"),
-				prop.ID("id"),
-				vecty.Data("foo", "bar"),
-			),
-			vecty.Text("Props"),
-		),
-		elem.Heading2(
-			vecty.Text("An example"),
-		),
-		elem.Div(
-			vecty.Markup(
-				vecty.Class("modal"),
-				vecty.Attribute("tabindex", "-1"),
-				vecty.Attribute("role", "dialog"),
-			),
-			elem.Div(
-				vecty.Markup(
-					vecty.Class("modal-dialog"),
-					vecty.Attribute("role", "document"),
-				),
-				elem.Div(
-					vecty.Markup(
-						vecty.Class("modal-content"),
-					),
-					elem.Div(
-						vecty.Markup(
-							vecty.Class("modal-header"),
-						),
-						elem.Heading5(
-							vecty.Markup(
-								vecty.Class("modal-title"),
-							),
-							vecty.Text("Modal title"),
-						),
-						elem.Button(
-							vecty.Markup(
-								prop.Type(prop.TypeButton),
-								vecty.Class("close"),
-								vecty.Data("dismiss", "modal"),
-								vecty.Attribute("aria-label", "Close"),
-							),
-							elem.Span(
-								vecty.Markup(
-									vecty.Attribute("aria-hidden", "true"),
-								),
-								vecty.Text("x"),
-							),
-						),
-					),
-					elem.Div(
-						vecty.Markup(
-							vecty.Class("modal-body"),
-						),
-						elem.Paragraph(
-							vecty.Text("Modal body text goes here."),
-						),
-					),
-					elem.Div(
-						vecty.Markup(
-							vecty.Class("modal-footer"),
-						),
-						elem.Button(
-							vecty.Markup(
-								prop.Type(prop.TypeButton),
-								vecty.Class("btn", "btn-primary"),
-							),
-							vecty.Text("Save changes"),
-						),
-						elem.Button(
-							vecty.Markup(
-								prop.Type(prop.TypeButton),
-								vecty.Class("btn", "btn-secondary"),
-								vecty.Data("dismiss", "modal"),
-							),
-							vecty.Text("Close"),
-						),
-					),
-				),
-			),
-		),
-	)
-}
-
-func (t *Test) Render() vecty.ComponentOrHTML {
-	return elem.UnorderedList(func() (e vecty.List) {
-		for key, value := range t.groceryList {
-			e = append(e, elem.ListItem(vecty.Markup(prop.Value(t.todo), event.Input(func(e *vecty.Event) {
-				t.todo = dom.WrapEvent(e.Target).Target().TextContent()
-				dom.WrapEvent(e.Target).PreventDefault()
-			}), event.Key(t.click), event.Click(t.onClick), vecty.Data("key", key.id), vecty.Class("a", "b", "c"), vecty.Data("hello", hello)), vecty.Text(t.moke), elem.ListItem(vecty.Markup(vecty.UnsafeHTML(t.world))), elem.Input()))
+	return elem.Div(elem.Div(elem.Navigation(vecty.Markup(vecty.Class("navbar", "navbar-expand-md", "navbar-dark", "bg-dark", "fixed-top")), elem.Anchor(vecty.Markup(vecty.Class("navbar-brand")), vecty.Text("Navbar")), elem.Button(vecty.Markup(vecty.Class("navbar-toggler"), vecty.Data("toggle", "toggle"), vecty.Data("target", "target")), elem.Span(vecty.Markup(vecty.Class("navbar-toggler-icon")))), elem.Div(vecty.Markup(vecty.Class("collapse", "navbar-collapse")), elem.UnorderedList(vecty.Markup(vecty.Class("navbar-nav", "mr-auto")), elem.ListItem(vecty.Markup(vecty.Class("nav-item", "active")), elem.Anchor(vecty.Markup(vecty.Class("nav-link")), vecty.Text("Home"), elem.Span(vecty.Markup(vecty.Class("sr-only")), vecty.Text("(current)")))), elem.ListItem(vecty.Markup(vecty.Class("nav-item")), elem.Anchor(vecty.Markup(vecty.Class("nav-link")), vecty.Text("Link"))), elem.ListItem(vecty.Markup(vecty.Class("nav-item")), elem.Anchor(vecty.Markup(vecty.Class("nav-link", "disabled")), vecty.Text("Disabled"))), elem.ListItem(vecty.Markup(vecty.Class("nav-item", "dropdown")), elem.Anchor(vecty.Markup(vecty.Class("nav-link", "dropdown-toggle"), vecty.Data("toggle", "toggle")), vecty.Text("Dropdown")), elem.Div(vecty.Markup(vecty.Class("dropdown-menu")), elem.Anchor(vecty.Markup(vecty.Class("dropdown-item")), vecty.Text("Action")), elem.Anchor(vecty.Markup(vecty.Class("dropdown-item")), vecty.Text("Another action")), elem.Anchor(vecty.Markup(vecty.Class("dropdown-item")), vecty.Text("Something else here"))))), elem.Form(vecty.Markup(vecty.Class("form-inline", "my-2", "my-lg-0")), elem.Input(vecty.Markup(vecty.Class("form-control", "mr-sm-2"))), elem.Button(vecty.Markup(vecty.Class("btn", "btn-outline-success", "my-2", "my-sm-0")), vecty.Text("Search"))))), elem.Div(vecty.Markup(), elem.OrderedList(func() (e vecty.List) {
+		for todo := range todos {
+			e = append(e, elem.ListItem(vecty.Markup(), vecty.Text(todo.text)))
 		}
 		return
-	}(), vecty.If(t.hello > 0, elem.Paragraph(vecty.Markup())), elem.Paragraph(vecty.Markup(event.Click(a))), elem.Paragraph(vecty.Markup(event.Click(a1))), elem.Paragraph(vecty.Markup(vecty.Data("click-sss", func() string {
-		if pkg.IsNone(name) {
-			return "hello"
-		} else {
-			return name
-		}
-	}()))), elem.Paragraph(vecty.Markup(vecty.Data("click-sss", func() string {
-		if name > 0 {
-			return world
-		} else {
-			return "hello"
-		}
-	}()))), elem.Paragraph(vecty.Text("hello1111 "+func() string {
-		if name > 0 {
-			return world
-		} else {
-			return hello
-		}
-	}())), elem.Paragraph(vecty.Text("hello1111 "+"hello1111"+hello)), elem.ListItem(elem.ListItem(elem.Paragraph(vecty.Text("测试 "+hello)))), elem.ListItem(elem.ListItem(elem.Paragraph(vecty.Text("测试")))), func() (e vecty.List) {
-		for key, value := range t.groceryList {
-			e = append(e, b.Hello(map[string]interface{}{
-				"Hello":   hello,
-				"Key":     key.id,
-				"OnClick": t.onClick,
-				"OnInput": func(v string) {
-					t.todo = v
-				},
-				"OnKey": t.click,
-				"Value": t.todo,
-			}, elem.ListItem(elem.ListItem(elem.Paragraph(vecty.Text("测试")))), elem.ListItem(elem.ListItem(elem.Paragraph(vecty.Text("测试"))))))
+	}())), elem.Div(vecty.Markup(vecty.Style("float", right)), elem.Label(elem.TextArea(vecty.Markup(vecty.Style("font-family", monospace), event.Input(texthandler)), vecty.Text(Input)))), elem.Div(vecty.Markup(), vecty.Text(message)), elem.Div(vecty.Markup(), elem.Span(vecty.Markup(vecty.Data("title", message)), vecty.Text("鼠标悬停几秒钟查看此处动态绑定的提示信息！"))), elem.Div(vecty.Markup(), vecty.If(seen, elem.Paragraph(vecty.Markup(), vecty.Text("现在你看到我了")))), elem.Div(vecty.Markup(), elem.Paragraph(vecty.Text(message)), elem.Button(vecty.Markup(event.Click(reverseMessage)), vecty.Text("反转消息")), elem.Button(vecty.Markup(event.Click(reverseMessage)), vecty.Text("反转消息")), elem.Div(vecty.Markup(), elem.Paragraph(vecty.Text(message)), elem.Button(vecty.Markup(event.Click(reverseMessage)), vecty.Text("反转消息"))), elem.Div(vecty.Markup(), elem.Paragraph(vecty.Text(message)), elem.Input(vecty.Markup(prop.Value(message), event.Input(func(e *vecty.Event) {
+		message = dom.WrapEvent(e.Target).Target().TextContent()
+		dom.WrapEvent(e.Target).PreventDefault()
+	})))), elem.Div(vecty.Markup(), elem.OrderedList(func() (e vecty.List) {
+		for item := range groceryList {
+			e = append(e, b.TodoItem(map[string]interface{}{
+				"Key":  item.id,
+				"Todo": item,
+			}, elem.Div(vecty.Markup(), c.AppNav(), c.AppView(c.AppSidebar(), c.AppContent()))))
 		}
 		return
-	}())
+	}()))), elem.Div(vecty.Markup(), elem.Paragraph(vecty.Text(message)), elem.Input(vecty.Markup(prop.Value(message), event.Input(func(e *vecty.Event) {
+		message = dom.WrapEvent(e.Target).Target().TextContent()
+		dom.WrapEvent(e.Target).PreventDefault()
+	})))), elem.OrderedList(c.TodoItem()), elem.Div(vecty.Markup(), elem.OrderedList(func() (e vecty.List) {
+		for item := range groceryList {
+			e = append(e, c.TodoItem(map[string]interface{}{
+				"Key":  item.id,
+				"Todo": item,
+			}))
+		}
+		return
+	}())), elem.Div(vecty.Markup(), c.AppNav(), c.AppView(c.AppSidebar(), c.AppContent()))))
 }
-
-
-

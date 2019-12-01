@@ -34,7 +34,7 @@ var ternaryReg = xerror.PanicErr(regexp.Compile(`(.+)\?(.+):(.+)`)).(*regexp.Reg
 var ternaryBrace = xerror.PanicErr(regexp.Compile(`(.*){{{(.+)}}}(.*)`)).(*regexp.Regexp)
 var twoBrace = xerror.PanicErr(regexp.Compile(`(.*){{(.+)}}(.*)`)).(*regexp.Regexp)
 var forReg = xerror.PanicErr(regexp.Compile(`,|\s+in\s+`)).(*regexp.Regexp)
-var _for = func(file *jen.File, child *jen.Statement, value string) *jen.Statement {
+var forExp = func(file *jen.File, child *jen.Statement, value string) *jen.Statement {
 	xerror.PanicT(value == "", "params is zero")
 
 	var params []string
@@ -116,7 +116,7 @@ func classExp(file *jen.File, g *jen.Group, e string) {
 			}
 
 			if _c := strings.Split(c, ":"); len(_c) == 2 && trim(_c[0]) != "" && trim(_c[1]) != "" {
-				g.Id("vecty.ClassMap").Call(jen.Lit(trim(_c[0])), exp(file, _c[1]))
+				g.Qual(vectyPackage, "ClassMap").Call(jen.Lit(trim(_c[0])), exp(file, _c[1]))
 			}
 		}
 		return
@@ -213,15 +213,33 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 	case ns == "" && (key == "v-for" || key == "xmlns" || key == "v-if"):
 		return
 	case ns == "" && len(key) > 5 && key[:5] == "data-" && value != "":
-		key = key[5:]
+		if key = trim(key[5:]); key == "" {
+			return
+		}
+
+		if ternaryBrace.MatchString(key) || twoBrace.MatchString(key) {
+			if _exp := exp(file, key); _exp != nil {
+				file.ImportName(vectyPackage, "vecty")
+				if d != nil {
+					d[jen.Lit(strings.Title(key))] = _exp
+				}
+
+				if g != nil {
+					g.Qual(vectyPackage, "Data").Call(jen.Lit(key), _exp)
+				}
+			}
+			return
+		}
+
 		if d != nil {
-			d[jen.Lit(strings.Title(key))] = exp(file, value)
+			d[jen.Lit(strings.Title(key))] = jen.Lit(key)
 		}
 
 		if g != nil {
-			g.Qual(vectyPackage, "Data").Call(jen.Lit(key), exp(file, value))
+			g.Qual(vectyPackage, "Data").Call(jen.Lit(key), jen.Lit(key))
 		}
 		return
+
 	case ns == "v-on" || key[0] == '@':
 		key = strings.ReplaceAll(strings.Title(key[1:]), "-", "")
 		if d != nil {
@@ -273,17 +291,20 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 		if g != nil {
 			file.ImportName(vectyPropPackage, "prop")
 			file.ImportName(vectyEventPackage, "event")
-			file.ImportAlias("honnef.co/go/js/dom/v2", "dom")
+			file.ImportAlias(dom, "dom")
 
 			g.Qual(vectyPropPackage, "Value").Call(_exp)
 			g.Qual(vectyEventPackage, "Input").CallFunc(func(g *jen.Group) {
 				g.Func().Params(jen.Id("e").Op("*").Qual(vectyPackage, "Event")).BlockFunc(func(g *jen.Group) {
-					g.Id(value).Op("=").Qual("honnef.co/go/js/dom/v2", "WrapEvent(e.Target).Target().TextContent()")
-					g.Qual("honnef.co/go/js/dom/v2", "WrapEvent(e.Target).PreventDefault()")
+					g.Id(value).Op("=").Qual(dom, "WrapEvent(e.Target).Target().TextContent()")
+					g.Qual(dom, "WrapEvent(e.Target).PreventDefault()")
 				})
 			})
 		}
 	case key == "v-html":
+		if value == "" {
+
+		}
 		g.Add(exp(file, "{{{"+value+"}}}"))
 		return
 	case key == "v-text":
@@ -309,7 +330,7 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 			}
 			g.Qual(vectyPackage, "Style").Call(
 				jen.Lit(dec.Property),
-				jen.Lit(exp(file, dec.Value)),
+				exp(file, dec.Value),
 			)
 		}
 		return
