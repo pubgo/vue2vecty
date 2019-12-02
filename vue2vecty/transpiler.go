@@ -69,7 +69,7 @@ func (s *Transpiler) transcode() (err error) {
 
 		token, err := decoder.Token()
 		if err == io.EOF || token == nil {
-			return nil, xerror.ErrDone
+			return nil, xerror.Errs.Done
 		}
 		xerror.Panic(err)
 
@@ -89,7 +89,7 @@ func (s *Transpiler) transcode() (err error) {
 					_appPackage += "/" + strings.Join(ts[:len(ts)-1], "/")
 					file.ImportAlias(_appPackage, ts[len(ts)-2])
 				} else {
-					file.ImportAlias(_appPackage, "components")
+					file.ImportAlias(_appPackage, "c")
 				}
 
 				ce = jen.Qual(_appPackage, strings.ReplaceAll(strings.Title(name), "-", "")).CallFunc(func(g *jen.Group) {
@@ -104,7 +104,7 @@ func (s *Transpiler) transcode() (err error) {
 					for {
 						c, err := _transcode(decoder)
 						if err != nil {
-							if err == xerror.ErrDone {
+							if err == xerror.Errs.Done {
 								break
 							}
 							xerror.Panic(err)
@@ -128,7 +128,7 @@ func (s *Transpiler) transcode() (err error) {
 					for {
 						c, err := _transcode(decoder)
 						if err != nil {
-							if err == xerror.ErrDone {
+							if err == xerror.Errs.Done {
 								break
 							}
 							xerror.Panic(err)
@@ -173,7 +173,7 @@ func (s *Transpiler) transcode() (err error) {
 			}
 			return nil, nil
 		case xml.EndElement:
-			return nil, xerror.ErrDone
+			return nil, xerror.Errs.Done
 		case xml.Comment:
 			return nil, nil
 		default:
@@ -185,7 +185,7 @@ func (s *Transpiler) transcode() (err error) {
 	for {
 		c, err := _transcode(decoder)
 		if err != nil {
-			if err == io.EOF || err == xerror.ErrDone {
+			if err == io.EOF || err == xerror.Errs.Done {
 				break
 			}
 			s.code = fmt.Sprintf("%s", err)
@@ -221,6 +221,6 @@ func (s *Transpiler) transcode() (err error) {
 }
 
 //Hello
-func Hello () {
+func Hello() {
 
 }

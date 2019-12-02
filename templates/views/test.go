@@ -2,34 +2,27 @@ package views
 
 import (
 	"github.com/gopherjs/vecty"
+	"github.com/mitchellh/mapstructure"
+	"github.com/pubgo/g/xerror"
 )
 
-func init() {
-	TestC(map[string]interface{}{
-		"OnInput": func(string) {},
-		"Value":   "",
-	},
-		TestC(map[string]interface{}{
-			"OnInput": func(string) {},
-			"Value":   "",
-		},
-			TestC(map[string]interface{}{
-				"OnInput": func(string) {},
-				"Value":   "",
-			},
-				vecty.Text(""),
-			),
-			vecty.Text(""),
+func Test(data map[string]interface{}, slots ...vecty.ComponentOrHTML) vecty.ComponentOrHTML {
+	t := &TestPage{Slot: slots}
+	decoder := xerror.PanicErr(mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		TagName:          "prop",
+		Metadata:         nil,
+		Result:           t,
+		WeaklyTypedInput: true,
+		DecodeHook: mapstructure.ComposeDecodeHookFunc(
+			mapstructure.StringToTimeDurationHookFunc(),
+			mapstructure.StringToSliceHookFunc(","),
 		),
-		vecty.Text(""),
-	)
+	})).(*mapstructure.Decoder)
+	xerror.Panic(decoder.Decode(data))
+	return t
 }
 
-func TestC(data map[string]interface{}, slot ...vecty.ComponentOrHTML) vecty.ComponentOrHTML {
-	return &Test{}
-}
-
-type Test struct {
+type TestPage struct {
 	vecty.Core
 
 	OnInput func(string)
@@ -37,7 +30,5 @@ type Test struct {
 	hello string
 	Value string
 
-	Slot   vecty.List
-	Markup []vecty.Applyer
-	data   map[string]interface{}
+	Slot vecty.List
 }

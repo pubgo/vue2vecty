@@ -2,7 +2,6 @@ package cmds
 
 import (
 	"github.com/pubgo/g/xcmds"
-	"github.com/pubgo/g/xcmds/xcmd_ss"
 	"github.com/pubgo/g/xerror"
 	"github.com/pubgo/vue2vecty/version"
 )
@@ -16,7 +15,4 @@ var Execute = xcmds.Init(EnvPrefix, func(cmd *xcmds.Command) {
 
 	cmd.Use = Service
 	cmd.Version = version.Version
-
-	// 添加加密命令
-	xcmd_ss.Init()
 })
