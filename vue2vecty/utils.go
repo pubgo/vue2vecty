@@ -282,13 +282,12 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 		}
 		return
 	case key == "v-model":
-		_exp := exp(file, value)
-		if _exp == nil {
+		if value == "" {
 			return
 		}
 
 		if d != nil {
-			d[jen.Lit("Value")] = _exp
+			d[jen.Lit("Value")] = jen.Id("t." + value)
 			d[jen.Lit("OnInput")] = jen.Func().Params(jen.Id("v").String()).BlockFunc(func(g *jen.Group) {
 				g.Id(value).Op("=").Id("v")
 			})
@@ -299,7 +298,7 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 			file.ImportName(vectyEventPackage, "event")
 			file.ImportAlias(dom, "dom")
 
-			g.Qual(vectyPropPackage, "Value").Call(_exp)
+			g.Qual(vectyPropPackage, "Value").Call(jen.Id("t." + value))
 			g.Qual(vectyEventPackage, "Input").CallFunc(func(g *jen.Group) {
 				g.Func().Params(jen.Id("e").Op("*").Qual(vectyPackage, "Event")).BlockFunc(func(g *jen.Group) {
 					g.Id(value).Op("=").Qual(dom, "WrapEvent(e.Target).Target().TextContent()")
@@ -308,13 +307,14 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 			})
 		}
 	case key == "v-html":
-		if value == "" {
-
+		if value != "" {
+			g.Add(exp(file, "{{{"+value+"}}}"))
 		}
-		g.Add(exp(file, "{{{"+value+"}}}"))
 		return
 	case key == "v-text":
-		g.Add(exp(file, "{{"+value+"}}"))
+		if value != "" {
+			g.Add(exp(file, "{{"+value+"}}"))
+		}
 		return
 	case key == "v-focus":
 		return

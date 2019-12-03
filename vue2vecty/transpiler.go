@@ -7,6 +7,7 @@ import (
 	"github.com/pubgo/vue2vecty/xml"
 	"io"
 	"io/ioutil"
+	"regexp"
 	"strings"
 
 	"github.com/dave/jennifer/jen"
@@ -171,7 +172,9 @@ func (t *Transpiler) transform() (err error) {
 					continue
 				}
 
-				if strings.Contains(_e, "{{") && strings.Contains(_e, "}}") {
+				// strings.Contains(_e, "{{") && strings.Contains(_e, "}}")
+				_check := xerror.PanicErr(regexp.Compile(`(.*){{(.*)}}(.*)`)).(*regexp.Regexp)
+				if _check.MatchString(_e) {
 					if ternaryBrace.MatchString(_e) || twoBrace.MatchString(_e) {
 						if _exp := exp(file, _e); _exp != nil {
 							_code = append(_code, _exp)
@@ -179,8 +182,6 @@ func (t *Transpiler) transform() (err error) {
 					}
 					continue
 				}
-
-				fmt.Printf("%#v\n\n", _e)
 				_code = append(_code, jen.Qual(vectyPackage, "Text").Call(jen.Lit(_e)))
 			}
 
