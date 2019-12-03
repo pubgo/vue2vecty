@@ -1,4 +1,4 @@
-package views
+package a
 
 import (
 	"github.com/gopherjs/vecty"
@@ -7,7 +7,7 @@ import (
 )
 
 func Test(data map[string]interface{}, slots ...vecty.ComponentOrHTML) vecty.ComponentOrHTML {
-	t := &TestPage{Slot: slots}
+	t := &_Test{Slot: slots}
 	decoder := xerror.PanicErr(mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		TagName:          "prop",
 		Metadata:         nil,
@@ -22,7 +22,7 @@ func Test(data map[string]interface{}, slots ...vecty.ComponentOrHTML) vecty.Com
 	return t
 }
 
-type TestPage struct {
+type _Test struct {
 	vecty.Core
 
 	OnInput func(string)

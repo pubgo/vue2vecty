@@ -15,7 +15,10 @@ import (
 
 func init() {
 	var templateHome = "templates"
-	xcmds.AddCommand(&xcmds.Command{
+	xcmds.AddCommand(func(cmd *xcmds.Command) *xcmds.Command {
+		cmd.Flags().StringVar(&templateHome, "dir", templateHome, "模板目录位置")
+		return cmd
+	}(&xcmds.Command{
 		Use:     "build",
 		Aliases: []string{"b"},
 		Short:   "build template",
@@ -28,6 +31,7 @@ func init() {
 				}
 
 				names := strings.Split(info.Name(), ".")
+				// 检查后缀
 				if !strings.Contains(names[len(names)-1], "html") {
 					return nil
 				}
@@ -40,11 +44,13 @@ func init() {
 				f, err := os.Open(path)
 				xerror.PanicM(err, "file open error")
 
-				_c := vue2vecty.NewTranspiler(f, envy.CurrentPackage()+"/templates", strings.ReplaceAll(strings.Title(name), "-", ""), _compo)
-				errors.Panic(ioutil.WriteFile(filepath.Join(_dir, name+"-render.go"), []byte(_c.Code()), 0755))
+				_c := vue2vecty.NewTranspiler(f,
+					envy.CurrentPackage()+"/"+templateHome,
+					"_"+strings.ReplaceAll(strings.Title(name), "-", ""),
+					_compo)
+				errors.Panic(ioutil.WriteFile(filepath.Join(_dir, name+"-render.go"), []byte(_c.Code()), 0644))
 				return nil
 			}))
-
-		},
-	})
+		}},
+	))
 }

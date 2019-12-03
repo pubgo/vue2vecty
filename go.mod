@@ -11,7 +11,7 @@ require (
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/gowebapi/webapi v0.0.0-20190915091251-5bada52b9d13 // indirect
 	github.com/mitchellh/mapstructure v1.1.2
-	github.com/pubgo/g v0.2.0
+	github.com/pubgo/g v0.2.6
 	github.com/tdewolff/parse/v2 v2.3.11 // indirect
 	honnef.co/go/js/dom/v2 v2.0.0-20190526011328-ebc4cf92d81f
 )

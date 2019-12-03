@@ -11,12 +11,6 @@ import (
 )
 
 var trim = strings.TrimSpace
-var call = jen.Options{
-	Open:      "(",
-	Close:     ")",
-	Separator: ",",
-	Multi:     true,
-}
 
 func createStruct(packageName, componentName string) *jen.File {
 	file := jen.NewFile(packageName)
@@ -251,7 +245,7 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 		}
 		return
 	case ns == "v-bind" || key[0] == ':':
-		key = key[1:]
+		key = trim(key[1:])
 
 		if _key, ok := stringProps[key]; ok {
 			g.Qual(vectyPropPackage, _key).Call(exp(file, value))
@@ -266,6 +260,18 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 			classExp(file, g, value)
 			return
 		default:
+			if len(key) > 2 && key[0] == '[' && key[len(key)-1] == ']' {
+				key = trim(key[1 : len(key)-1])
+				if d != nil {
+					d[jen.Id("t."+key)] = exp(file, value)
+				}
+
+				if g != nil {
+					g.Qual(vectyPackage, "Data").Call(jen.Id("t."+key), exp(file, value))
+				}
+				return
+			}
+
 			if d != nil {
 				d[jen.Lit(strings.Title(key))] = exp(file, value)
 			}

@@ -22,7 +22,7 @@ func NewTranspiler(r io.Reader, appPackage, componentName, packageName string) *
 		componentName: componentName,
 	}
 	s.read()
-	xerror.PanicM(s.transcode(), "transcode error")
+	xerror.PanicM(s.transform(), "transform error")
 	return s
 }
 
@@ -34,22 +34,22 @@ type Transpiler struct {
 	html, code    string
 }
 
-func (s *Transpiler) read() {
-	bb, err := ioutil.ReadAll(s.reader)
+func (t *Transpiler) read() {
+	bb, err := ioutil.ReadAll(t.reader)
 	xerror.PanicM(err, "reading component template error")
-	s.html = string(bb)
+	t.html = string(bb)
 }
 
-func (s *Transpiler) Code() string {
-	return s.code
+func (t *Transpiler) Code() string {
+	return t.code
 }
 
-func (s *Transpiler) transcode() (err error) {
+func (t *Transpiler) transform() (err error) {
 	defer xerror.RespErr(&err)
 
-	file := jen.NewFile(s.packageName)
-	file.PackageComment("This file was created with https://github.com/pubgo/factor")
-	file.PackageComment("using https://jsgo.io/dave/html2vecty")
+	file := jen.NewFile(t.packageName)
+	file.PackageComment("This file was created with https://github.com/pubgo/vue2vecty")
+	file.PackageComment("using https://jsgo.io/pubgo/vue2vecty")
 	file.ImportNames(map[string]string{
 		vectyPackage:      "vecty",
 		vectyElemPackage:  "elem",
@@ -58,14 +58,14 @@ func (s *Transpiler) transcode() (err error) {
 		vectyStylePackage: "style",
 	})
 
-	decoder := xml.NewDecoder(bytes.NewBufferString(s.html))
+	decoder := xml.NewDecoder(bytes.NewBufferString(t.html))
 	decoder.Strict = false
 	decoder.AutoClose = xml.HTMLAutoClose
 	decoder.Entity = xml.HTMLEntity
 
-	var _transcode func(*xml.Decoder) ([]jen.Code, error)
-	_transcode = func(decoder *xml.Decoder) (code []jen.Code, err error) {
-		defer xerror.Assert()
+	var _transform func(*xml.Decoder) ([]jen.Code, error)
+	_transform = func(decoder *xml.Decoder) (code []jen.Code, err error) {
+		defer xerror.RespErr(&err)
 
 		token, err := decoder.Token()
 		if err == io.EOF || token == nil {
@@ -84,15 +84,19 @@ func (s *Transpiler) transcode() (err error) {
 				ts := strings.Split(tag, ":")
 				name := trim(ts[len(ts)-1])
 
-				_appPackage = s.appPackage + "/components"
+				_appPackage = t.appPackage + "/components"
 				if len(ts) > 1 {
 					_appPackage += "/" + strings.Join(ts[:len(ts)-1], "/")
-					file.ImportAlias(_appPackage, ts[len(ts)-2])
+					file.ImportName(_appPackage, ts[len(ts)-2])
 				} else {
-					file.ImportAlias(_appPackage, "c")
+					file.ImportName(_appPackage, "components")
+					if t.packageName == "components" {
+						_appPackage = ""
+					}
 				}
 
-				ce = jen.Qual(_appPackage, strings.ReplaceAll(strings.Title(name), "-", "")).CallFunc(func(g *jen.Group) {
+				name = strings.ReplaceAll(strings.Title(name), "-", "")
+				ce = jen.Qual(_appPackage, name).CallFunc(func(g *jen.Group) {
 					if len(token.Attr) > 0 {
 						g.Map(jen.String()).Interface().Values(jen.DictFunc(func(d jen.Dict) {
 							for _, v := range token.Attr {
@@ -102,13 +106,12 @@ func (s *Transpiler) transcode() (err error) {
 					}
 
 					for {
-						c, err := _transcode(decoder)
+						c, err := _transform(decoder)
 						if err != nil {
 							if err == xerror.Errs.Done {
 								break
 							}
 							xerror.Panic(err)
-							return
 						}
 						if c != nil {
 							g.Add(c...)
@@ -126,13 +129,12 @@ func (s *Transpiler) transcode() (err error) {
 					}
 
 					for {
-						c, err := _transcode(decoder)
+						c, err := _transform(decoder)
 						if err != nil {
 							if err == xerror.Errs.Done {
 								break
 							}
 							xerror.Panic(err)
-							return
 						}
 						if c != nil {
 							g.Add(c...)
@@ -147,31 +149,45 @@ func (s *Transpiler) transcode() (err error) {
 				key = strings.TrimLeft(key, ns)
 				value := trim(attr.Value)
 
-				if ns == "" && (key == "v-if" || key == "v-show") && value != "" {
-					ce = jen.Qual(vectyPackage, "If").Call(exp(file, value), ce)
-					break
+				if ns == "" && (key == "v-for" || key == "v-range") && value != "" {
+					ce = forExp(file, ce, value)
 				}
 
-				if ns == "" && key == "v-for" {
-					ce = forExp(file, ce, value)
-					break
+				if ns == "" && (key == "v-if" || key == "v-show") && value != "" {
+					ce = jen.Qual(vectyPackage, "If").Call(exp(file, value), ce)
 				}
 			}
 
 			return []jen.Code{ce}, nil
 		case xml.CharData:
-
-			if e := trim(string(token)); e != "" {
-				if ternaryBrace.MatchString(e) || twoBrace.MatchString(e) {
-					if _exp := exp(file, string(token)); _exp != nil {
-						return []jen.Code{_exp}, nil
-					}
-					return nil, nil
-				}
-				file.ImportName(vectyPackage, "vecty")
-				return []jen.Code{jen.Qual(vectyPackage, "Text").Call(jen.Lit(e))}, nil
+			e := trim(string(token))
+			if e == "" {
+				return nil, nil
 			}
-			return nil, nil
+
+			var _code []jen.Code
+			for _, _e := range strings.Split(e, "\n") {
+				if _e = trim(_e); _e == "" {
+					continue
+				}
+
+				if strings.Contains(_e, "{{") && strings.Contains(_e, "}}") {
+					if ternaryBrace.MatchString(_e) || twoBrace.MatchString(_e) {
+						if _exp := exp(file, _e); _exp != nil {
+							_code = append(_code, _exp)
+						}
+					}
+					continue
+				}
+
+				fmt.Printf("%#v\n\n", _e)
+				_code = append(_code, jen.Qual(vectyPackage, "Text").Call(jen.Lit(_e)))
+			}
+
+			if len(_code) == 0 {
+				return nil, nil
+			}
+			return _code, nil
 		case xml.EndElement:
 			return nil, xerror.Errs.Done
 		case xml.Comment:
@@ -183,12 +199,12 @@ func (s *Transpiler) transcode() (err error) {
 	}
 	var elements []jen.Code
 	for {
-		c, err := _transcode(decoder)
+		c, err := _transform(decoder)
 		if err != nil {
 			if err == io.EOF || err == xerror.Errs.Done {
 				break
 			}
-			s.code = fmt.Sprintf("%s", err)
+			xerror.Panic(err)
 		}
 
 		if c != nil {
@@ -196,31 +212,24 @@ func (s *Transpiler) transcode() (err error) {
 		}
 	}
 
-	if s.packageName == "routes" || s.packageName == "pages" {
-		file.Func().Params(jen.Id("t").Id("*"+s.componentName)).Id("Render").Params().Qual("github.com/gopherjs/vecty", "ComponentOrHTML").Block(
-			jen.Qual("github.com/gopherjs/vecty", "SetTitle").Call(
+	if t.packageName == "routes" || t.packageName == "pages" || t.packageName == "views" {
+		file.Func().Params(jen.Id("t").Id("*"+t.componentName)).Id("Render").Params().Qual(vectyPackage, "ComponentOrHTML").Block(
+			jen.Qual(vectyPackage, "SetTitle").Call(
 				jen.Id("p").Dot("GetTitle").Call(),
 			),
 			jen.Return(
-				// TODO: wrap in if - only body for a "route"
-				jen.Qual("github.com/gopherjs/vecty/elem", "Body").Call(elements...),
+				jen.Qual(vectyElemPackage, "Body").Call(elements...),
 			),
 		)
 	} else {
-		file.Func().Params(jen.Id("t").Op("*").Id(s.componentName)).Id("Render").Params().Qual("github.com/gopherjs/vecty", "ComponentOrHTML").Block(
-			// TODO: wrap in if - only body for a "route"
-			// TODO: Are you sure this is right? It looks like if len(elements) > 1 this will break?
+		file.Func().Params(jen.Id("t").Op("*").Id(t.componentName)).Id("Render").Params().Qual(vectyPackage, "ComponentOrHTML").Block(
 			jen.Return(elements...),
 		)
 	}
 
 	buf := &bytes.Buffer{}
+	defer buf.Reset()
 	xerror.Panic(file.Render(buf))
-	s.code = buf.String()
+	t.code = buf.String()
 	return
-}
-
-//Hello
-func Hello() {
-
 }
