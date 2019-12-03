@@ -45,7 +45,7 @@ func init() {
 				xerror.PanicM(err, "file open error")
 
 				_c := vue2vecty.NewTranspiler(f,
-					envy.CurrentPackage()+"/"+templateHome,
+					xerror.PanicErr(envy.CurrentModule()).(string)+"/"+templateHome,
 					"_"+strings.ReplaceAll(strings.Title(name), "-", ""),
 					_compo)
 				errors.Panic(ioutil.WriteFile(filepath.Join(_dir, name+"-render.go"), []byte(_c.Code()), 0644))

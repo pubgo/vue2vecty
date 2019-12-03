@@ -55,12 +55,23 @@ var forExp = func(file *jen.File, child *jen.Statement, value string) *jen.State
 	xerror.PanicT(s == nil, "statements error")
 
 	return jen.Func().Params().Params(jen.Id("e").Qual(vectyPackage, "List")).BlockFunc(func(g *jen.Group) {
-		g.For(s.Op(":=").Range().Add(exp(file, params[len(params)-1]))).BlockFunc(func(f *jen.Group) {
+		g.For(s.Op(":=").Range().Add(exp(file, "t."+params[len(params)-1]))).BlockFunc(func(f *jen.Group) {
 			f.Id("e=").Append(jen.Id("e"), child)
 		})
 		g.Return()
 	}).Call()
 }
+var onExp = func(v string) *jen.Statement {
+	v = strings.ReplaceAll(v, "$event", "value")
+	if strings.Contains(v, "=") {
+		return jen.Func().Params(jen.Id("value").String()).Block(jen.Id("t." + v))
+	} else {
+		return jen.Id("t." + v)
+	}
+}
+
+var IfExp string
+var OptExp string
 
 func styleExp(file *jen.File, g *jen.Group, e string) {
 	e = trim(e)
@@ -190,8 +201,6 @@ func exp(file *jen.File, e string) *jen.Statement {
 				g.Return(exp(file, s3))
 			})
 		}).Call()
-	case strings.Contains(e, "="):
-		return jen.Func().Params().Block(jen.Id(e))
 	default:
 		return jen.Id(e)
 	}
@@ -201,7 +210,9 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 	ns := trim(attr.Name.Space)
 	key := trim(attr.Name.Local)
 	key = strings.TrimLeft(key, ns)
-	value := strings.ReplaceAll(trim(attr.Value), "$", "t.")
+	value := trim(attr.Value)
+	//value = strings.ReplaceAll(value, "$", "t.")
+	value = strings.ReplaceAll(value, `'`, `"`)
 
 	switch {
 	case ns == "" && (key == "v-for" || key == "xmlns" || key == "v-if"):
@@ -235,13 +246,14 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 		return
 
 	case ns == "v-on" || key[0] == '@':
+
 		key = strings.ReplaceAll(strings.Title(key[1:]), "-", "")
 		if d != nil {
-			d[jen.Lit("On"+key)] = exp(file, value)
+			d[jen.Lit("On"+key)] = onExp(value)
 		}
 
 		if g != nil {
-			g.Qual(vectyEventPackage, key).Call(exp(file, value))
+			g.Qual(vectyEventPackage, key).Call(onExp(value))
 		}
 		return
 	case ns == "v-bind" || key[0] == ':':
@@ -286,10 +298,11 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 			return
 		}
 
+		value = "t." + value
 		if d != nil {
-			d[jen.Lit("Value")] = jen.Id("t." + value)
-			d[jen.Lit("OnInput")] = jen.Func().Params(jen.Id("v").String()).BlockFunc(func(g *jen.Group) {
-				g.Id(value).Op("=").Id("v")
+			d[jen.Lit("Value")] = jen.Id(value)
+			d[jen.Lit("OnInput")] = jen.Func().Params(jen.Id("_value").String()).BlockFunc(func(g *jen.Group) {
+				g.Id(value).Op("=").Id("_value")
 			})
 		}
 
@@ -298,7 +311,7 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 			file.ImportName(vectyEventPackage, "event")
 			file.ImportAlias(dom, "dom")
 
-			g.Qual(vectyPropPackage, "Value").Call(jen.Id("t." + value))
+			g.Qual(vectyPropPackage, "Value").Call(jen.Id(value))
 			g.Qual(vectyEventPackage, "Input").CallFunc(func(g *jen.Group) {
 				g.Func().Params(jen.Id("e").Op("*").Qual(vectyPackage, "Event")).BlockFunc(func(g *jen.Group) {
 					g.Id(value).Op("=").Qual(dom, "WrapEvent(e.Target).Target().TextContent()")
@@ -306,6 +319,7 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 				})
 			})
 		}
+		return
 	case key == "v-html":
 		if value != "" {
 			g.Add(exp(file, "{{{"+value+"}}}"))
@@ -317,6 +331,11 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 		}
 		return
 	case key == "v-focus":
+		if g == nil {
+			return
+		}
+
+		g.Qual(vectyPackage, "Autofocus").Call()
 		return
 	case key == "v-pre":
 		return
@@ -369,7 +388,6 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 		})
 	default:
 		fmt.Println(ns, key, value, "ok")
-		return
 	}
 
 }

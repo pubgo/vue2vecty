@@ -149,6 +149,7 @@ func (t *Transpiler) transform() (err error) {
 				key := trim(attr.Name.Local)
 				key = strings.TrimLeft(key, ns)
 				value := trim(attr.Value)
+				value = strings.ReplaceAll(value, `'`, `"`)
 
 				if ns == "" && (key == "v-for" || key == "v-range") && value != "" {
 					ce = forExp(file, ce, value)

@@ -1,5 +1,5 @@
 <b:a:todo-item
-        v-for="$groceryList"
+        v-for="groceryList"
         v-bind:todo="item"
         v-bind:key3="item.id"
         v-on:key5="item.id"
@@ -7,7 +7,7 @@
         .key2="item.id"
         :key="item.id"
         v-bind:[key1]="item.id"
-        v-focus=true
+        v-focus
 >
     sss
     {{}}
@@ -15,14 +15,16 @@
     {{}}
 
     <c:a:b:d
-            v-for="$groceryList"
-            v-model="$todo"
-            @key="$click"
-            @click="$onClick"
+            v-for="k in groceryList()"
+            v-model="todo"
+            @key="click(k)"
+            @click="onClick"
             :key="key.id"
+            @key2="mk=key.id+$event"
             class="a b c"
             data-hello="hello"
-            v-focus="true"
+            v-focus
+            v-if="a>1 && b==2 && key['sss']+1>0"
     >
     </c:a:b:d>
 
