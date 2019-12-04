@@ -59,6 +59,22 @@ func (t *Transpiler) transform() (err error) {
 		vectyStylePackage: "style",
 	})
 
+	// 处理import
+	/*
+		doc, err := goquery.NewDocumentFromReader(strings.NewReader(t.html))
+		xerror.Panic(err)
+		for _, n := range doc.Find("import").Nodes {
+			for _, attr := range n.Attr {
+				file.ImportName(attr.Val, attr.Key)
+			}
+		}
+		doc.Find("import").Remove()
+
+		t.html = xerror.PanicErr(doc.Html()).(string)
+		t.html = strings.ReplaceAll(t.html, `<html><head></head><body>`, "")
+		t.html = strings.ReplaceAll(t.html, `</body></html>`, "")
+	*/
+
 	decoder := xml.NewDecoder(bytes.NewBufferString(t.html))
 	decoder.Strict = false
 	decoder.AutoClose = xml.HTMLAutoClose
@@ -217,7 +233,7 @@ func (t *Transpiler) transform() (err error) {
 	if t.packageName == "routes" || t.packageName == "pages" || t.packageName == "views" {
 		file.Func().Params(jen.Id("t").Id("*"+t.componentName)).Id("Render").Params().Qual(vectyPackage, "ComponentOrHTML").Block(
 			jen.Qual(vectyPackage, "SetTitle").Call(
-				jen.Id("p").Dot("GetTitle").Call(),
+				jen.Id("t").Dot("GetTitle").Call(),
 			),
 			jen.Return(
 				jen.Qual(vectyElemPackage, "Body").Call(elements...),

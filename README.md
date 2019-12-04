@@ -1,9 +1,7 @@
 # vue2vecty
 translate vue to vecty
 
+一个把vue转换为vecty的工具
+A tool to convert vue to vecty
 
-https://github.com/dominikh/go-js-dom
-https://github.com/siongui/godom
-https://github.com/dennwc/dom
-https://github.com/gowebapi/webapi
 

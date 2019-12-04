@@ -1,8 +1,8 @@
-<b:a:todo-item
+<todo-item
         v-for="groceryList"
         v-bind:todo="item"
         v-bind:key3="item.id"
-        v-on:key5="item.id"
+        v-on:key5="Panic"
         @key4="item.id"
         .key2="item.id"
         :key="item.id"
@@ -14,7 +14,7 @@
     {{}}
     {{}}
 
-    <c:a:b:d
+    <cd
             v-for="k in groceryList()"
             v-model="todo"
             @key="click(k)"
@@ -26,12 +26,13 @@
             v-focus
             v-if="a>1 && b==2 && key['sss']+1>0"
     >
-    </c:a:b:d>
+    </cd>
 
     <li></li>
     <input/>
 
     <p data-click-sss=name>0?world:"hello"</p>
+    <p data-click-sss=name>0?world:"hello"</p>
     <p data-click-sss=name>{{0>0?world:"hello"}}</p>
-
-</b:a:todo-item>
+    <p data-click-sss=name>{{0>0?world:"hello"}}</p>
+</todo-item>

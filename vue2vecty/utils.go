@@ -12,15 +12,34 @@ import (
 
 var trim = strings.TrimSpace
 
-func createStruct(packageName, componentName string) *jen.File {
+func CreateStruct(packageName, componentName string) *jen.File {
 	file := jen.NewFile(packageName)
 	file.PackageComment("This file was created with https://github.com/pubgo/vue2vecty")
-	file.ImportName("github.com/gopherjs/vecty", "vecty")
+	file.ImportName(vectyPackage, "vecty")
 
 	componentName = strings.ReplaceAll(strings.Title(componentName), "-", "")
-	file.Type().Id(componentName).Struct(
-		jen.Qual("github.com/gopherjs/vecty", "Core"),
+	_componentName := "_" + componentName
+	file.Type().Id(_componentName).Struct(
+		jen.Qual(vectyPackage, "Core"),
+		jen.Id("Slot").Qual(vectyPackage, "List"),
 	)
+
+	file.Func().Id(componentName).Params(jen.Id("data").Map(jen.String()).Interface(), jen.Id("slots ...vecty.ComponentOrHTML")).Id("vecty.ComponentOrHTML").BlockFunc(func(g *jen.Group) {
+		g.Id("t").Op(":=").Op("&").Id(_componentName).Values(jen.Dict{jen.Id("Slot"): jen.Id("slots")})
+		g.IfFunc(func(g *jen.Group) {
+			g.Id("data").Op("!=").Nil().BlockFunc(func(g *jen.Group) {
+				g.IfFunc(func(g *jen.Group) {
+					file.ImportName("github.com/mitchellh/mapstructure", "mapstructure")
+					g.Id("err:=").Qual("github.com/mitchellh/mapstructure", "Decode").Call(jen.Id("data"), jen.Id("t")).Id("; err != nil").BlockFunc(func(g *jen.Group) {
+						file.ImportName("log", "log")
+						g.Qual("log", "Fatalf").Call(jen.Lit("%#v"), jen.Id("err"))
+					})
+				})
+			})
+		})
+		g.Return(jen.Id("t"))
+	})
+
 	return file
 }
 
@@ -40,22 +59,27 @@ var forExp = func(file *jen.File, child *jen.Statement, value string) *jen.State
 	}
 
 	var s *jen.Statement
+	var __s *jen.Statement
 	if len(params) == 1 {
+		__s = jen.Id("__key,__value")
 		s = jen.Id("key,value")
 	}
 
 	if len(params) == 2 {
+		__s = jen.Id("__" + params[0])
 		s = jen.Id(params[0])
 	}
 
 	if len(params) == 3 {
+		__s = jen.Id("__" + params[0] + "," + "__" + params[1])
 		s = jen.Id(params[0] + "," + params[1])
 	}
 
 	xerror.PanicT(s == nil, "statements error")
 
 	return jen.Func().Params().Params(jen.Id("e").Qual(vectyPackage, "List")).BlockFunc(func(g *jen.Group) {
-		g.For(s.Op(":=").Range().Add(exp(file, "t."+params[len(params)-1]))).BlockFunc(func(f *jen.Group) {
+		g.For(jen.Add(__s).Op(":=").Range().Add(exp(file, "t."+params[len(params)-1]))).BlockFunc(func(f *jen.Group) {
+			f.Add(s).Op(":=").Add(__s)
 			f.Id("e=").Append(jen.Id("e"), child)
 		})
 		g.Return()
@@ -64,14 +88,17 @@ var forExp = func(file *jen.File, child *jen.Statement, value string) *jen.State
 var onExp = func(v string) *jen.Statement {
 	v = strings.ReplaceAll(v, "$event", "value")
 	if strings.Contains(v, "=") {
-		return jen.Func().Params(jen.Id("value").String()).Block(jen.Id("t." + v))
+		return jen.Func().Params(jen.Id("value").String()).BlockFunc(func(g *jen.Group) {
+			g.Id("t." + v)
+			g.Qual(vectyPackage, "Rerender").Call(jen.Id("t"))
+		})
 	} else {
 		return jen.Id("t." + v)
 	}
 }
 
-var IfExp string
-var OptExp string
+//var IfExp string
+//var OptExp string
 
 func styleExp(file *jen.File, g *jen.Group, e string) {
 	e = trim(e)
@@ -246,7 +273,6 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 		return
 
 	case ns == "v-on" || key[0] == '@':
-
 		key = strings.ReplaceAll(strings.Title(key[1:]), "-", "")
 		if d != nil {
 			d[jen.Lit("On"+key)] = onExp(value)
@@ -279,7 +305,7 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 				}
 
 				if g != nil {
-					g.Qual(vectyPackage, "Data").Call(jen.Id("t."+key), exp(file, value))
+					g.Qual(vectyPackage, "Property").Call(jen.Id("t."+key), exp(file, value))
 				}
 				return
 			}
@@ -289,7 +315,7 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 			}
 
 			if g != nil {
-				g.Qual(vectyPackage, "Data").Call(jen.Lit(key), exp(file, value))
+				g.Qual(vectyPackage, "Property").Call(jen.Lit(strings.ToLower(key)), exp(file, value))
 			}
 		}
 		return
@@ -303,6 +329,7 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 			d[jen.Lit("Value")] = jen.Id(value)
 			d[jen.Lit("OnInput")] = jen.Func().Params(jen.Id("_value").String()).BlockFunc(func(g *jen.Group) {
 				g.Id(value).Op("=").Id("_value")
+				g.Qual(vectyPackage, "Rerender").Call(jen.Id("t"))
 			})
 		}
 
@@ -387,34 +414,29 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 			}
 		})
 	default:
-		fmt.Println(ns, key, value, "ok")
-	}
-
-}
-
-func componentElement(file *jen.File, appPackage string, token xml.StartElement) *jen.Statement {
-	ts := strings.Split(trim(token.Name.Local), ":")[1:]
-	name := trim(ts[len(ts)-1])
-
-	appPackage += "/components"
-	if len(ts) > 1 {
-		appPackage += "/" + strings.Join(ts[:len(ts)-1], "/")
-		file.ImportAlias(appPackage, ts[len(ts)-2])
-	} else {
-		file.ImportAlias(appPackage, "components")
-	}
-
-	return jen.Qual(appPackage, strings.ReplaceAll(strings.Title(name), "-", "")).CallFunc(func(g *jen.Group) {
-		if len(token.Attr) > 0 {
-			g.Map(jen.String()).Interface().Values(jen.DictFunc(func(d jen.Dict) {
-				for _, v := range token.Attr {
-					componentAttr(file, d, nil, v)
-				}
-			}))
-
-			for _, v := range token.Attr {
-				componentAttr(file, nil, g, v)
-			}
+		if value == "" {
+			return
 		}
-	})
+
+		key = strings.ToLower(key)
+		//switch strings.ToLower(key) {
+		//case "id":
+		//	key = "ID"
+		//case "for", "htmlfor", "html-for":
+		//	key = "For"
+		//case "focus", "autofocus":
+		//	key = "Autofocus"
+		//case "disabled":
+		//	key = "Alt"
+		//}
+
+		if d != nil {
+			d[jen.Lit(strings.Title(key))] = jen.Lit(value)
+		}
+
+		if g != nil {
+			g.Qual(vectyPackage, "Property").Call(jen.Lit(key), jen.Lit(value))
+		}
+	}
+
 }

@@ -19,6 +19,9 @@ func M(data map[string]interface{}, slots ...vecty.ComponentOrHTML) vecty.Compon
 		),
 	})).(*mapstructure.Decoder)
 	xerror.Panic(decoder.Decode(data))
+
+	//"github.com/vincent-petithory/dataurl"
+	//vecty.AddStylesheet(dataurl.New([]byte(styles), "text/css").String())
 	return t
 }
 
