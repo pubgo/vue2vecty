@@ -1,4 +1,4 @@
-package main
+package vfrontend
 
 import (
 	"time"
@@ -7,6 +7,7 @@ import (
 	"github.com/gopherjs/vecty"
 	"github.com/gopherjs/vecty/elem"
 	"github.com/gopherjs/vecty/prop"
+	"github.com/tulir/gopher-ace"
 )
 
 type Editor struct {

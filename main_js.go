@@ -4,14 +4,15 @@ package main
 
 import (
 	"github.com/gopherjs/vecty"
+	"github.com/pubgo/vue2vecty/vfrontend"
 	"github.com/vincent-petithory/dataurl"
 )
 
 func main() {
 	vecty.AddStylesheet(dataurl.New([]byte(styles), "text/css").String())
-	app := &App{}
+	app := &vfrontend.App{}
 	app.Init()
-	p := NewPage(app)
+	p := vfrontend.NewPage(app)
 	vecty.RenderBody(p)
 }
 

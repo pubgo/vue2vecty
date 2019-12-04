@@ -1,10 +1,9 @@
-package main
+package vfrontend
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
-
-	"bytes"
 	"io"
 
 	"strings"

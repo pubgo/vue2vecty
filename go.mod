@@ -1,6 +1,6 @@
 module github.com/pubgo/vue2vecty
 
-go 1.13
+go 1.11
 
 require (
 	github.com/aymerick/douceur v0.2.0

@@ -1,4 +1,4 @@
-package main
+package vfrontend
 
 type UserChangedTextAction struct {
 	Text string
