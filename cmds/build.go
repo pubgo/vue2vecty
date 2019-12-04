@@ -34,7 +34,7 @@ func init() {
 		return
 	}
 	xcmds.AddCommand(func(cmd *xcmds.Command) *xcmds.Command {
-		cmd.Flags().StringVar(&templateHome, "dir", templateHome, "模板目录位置")
+		cmd.Flags().StringVar(&templateHome, "dir", templateHome, "templates directory")
 		cmd.Flags().BoolVarP(&IsMonitor, "monitor", "m", IsMonitor, "is monitor mode")
 		return cmd
 	}(&xcmds.Command{
