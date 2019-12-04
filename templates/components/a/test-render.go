@@ -3,6 +3,7 @@
 package a
 
 import (
+	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/vecty"
 	"github.com/gopherjs/vecty/elem"
 	"github.com/gopherjs/vecty/event"
