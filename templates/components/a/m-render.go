@@ -1,4 +1,4 @@
-// This file was created with https://github.com/pubgo/vue2vecty
+// This file was created with https://github.com/pubgo/vue2vecty. DO NOT EDIT.
 // using https://jsgo.io/pubgo/vue2vecty
 package a
 
@@ -8,7 +8,7 @@ import (
 	"github.com/pubgo/vue2vecty/templates/components"
 )
 
-func (t *_M) Render() vecty.ComponentOrHTML {
+func (t *_M) _Render() vecty.ComponentOrHTML {
 	return func() (e vecty.List) {
 		for __key, __value := range t.groceryList {
 			key, value := __key, __value

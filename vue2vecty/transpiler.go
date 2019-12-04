@@ -49,7 +49,7 @@ func (t *Transpiler) transform() (err error) {
 	defer xerror.RespErr(&err)
 
 	file := jen.NewFile(t.packageName)
-	file.PackageComment("This file was created with https://github.com/pubgo/vue2vecty")
+	file.PackageComment("This file was created with https://github.com/pubgo/vue2vecty. DO NOT EDIT.")
 	file.PackageComment("using https://jsgo.io/pubgo/vue2vecty")
 	file.ImportNames(map[string]string{
 		vectyPackage:      "vecty",
@@ -231,7 +231,7 @@ func (t *Transpiler) transform() (err error) {
 	}
 
 	if t.packageName == "routes" || t.packageName == "pages" || t.packageName == "views" {
-		file.Func().Params(jen.Id("t").Id("*"+t.componentName)).Id("Render").Params().Qual(vectyPackage, "ComponentOrHTML").Block(
+		file.Func().Params(jen.Id("t").Id("*"+t.componentName)).Id("_Render").Params().Qual(vectyPackage, "ComponentOrHTML").Block(
 			jen.Qual(vectyPackage, "SetTitle").Call(
 				jen.Id("t").Dot("GetTitle").Call(),
 			),
@@ -240,7 +240,7 @@ func (t *Transpiler) transform() (err error) {
 			),
 		)
 	} else {
-		file.Func().Params(jen.Id("t").Op("*").Id(t.componentName)).Id("Render").Params().Qual(vectyPackage, "ComponentOrHTML").Block(
+		file.Func().Params(jen.Id("t").Op("*").Id(t.componentName)).Id("_Render").Params().Qual(vectyPackage, "ComponentOrHTML").Block(
 			jen.Return(elements...),
 		)
 	}

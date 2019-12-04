@@ -19,10 +19,6 @@ func CreateStruct(packageName, componentName string) *jen.File {
 
 	componentName = strings.ReplaceAll(strings.Title(componentName), "-", "")
 	_componentName := "_" + componentName
-	file.Type().Id(_componentName).Struct(
-		jen.Qual(vectyPackage, "Core"),
-		jen.Id("Slot").Qual(vectyPackage, "List"),
-	)
 
 	file.Func().Id(componentName).Params(jen.Id("data").Map(jen.String()).Interface(), jen.Id("slots ...vecty.ComponentOrHTML")).Id("vecty.ComponentOrHTML").BlockFunc(func(g *jen.Group) {
 		g.Id("t").Op(":=").Op("&").Id(_componentName).Values(jen.Dict{jen.Id("Slot"): jen.Id("slots")})
@@ -39,6 +35,15 @@ func CreateStruct(packageName, componentName string) *jen.File {
 		})
 		g.Return(jen.Id("t"))
 	})
+
+	file.Type().Id(_componentName).Struct(
+		jen.Qual(vectyPackage, "Core"),
+		jen.Id("Slot").Qual(vectyPackage, "List"),
+	)
+
+	file.Func().Params(jen.Id("t").Op("*").Id(_componentName)).Id("Render").Params().Qual(vectyPackage, "ComponentOrHTML").Block(
+		jen.Return(jen.Id("t._Render()")),
+	)
 
 	return file
 }

@@ -15,7 +15,7 @@ import (
 
 func init() {
 	var templateHome = "templates"
-	var IsMonitor = false
+	var isMonitor = false
 	var transpiler = func(path string) (err error) {
 		defer xerror.RespErr(&err)
 		_dir := filepath.Dir(path)
@@ -35,7 +35,7 @@ func init() {
 	}
 	xcmds.AddCommand(func(cmd *xcmds.Command) *xcmds.Command {
 		cmd.Flags().StringVar(&templateHome, "dir", templateHome, "templates directory")
-		cmd.Flags().BoolVarP(&IsMonitor, "monitor", "m", IsMonitor, "is monitor mode")
+		cmd.Flags().BoolVarP(&isMonitor, "monitor", "m", isMonitor, "is monitor mode")
 		return cmd
 	}(&xcmds.Command{
 		Use:     "build",
@@ -63,7 +63,7 @@ func init() {
 				return nil
 			}))
 
-			for {
+			for isMonitor {
 				select {
 				case event, ok := <-watcher.Events:
 					if ok && (event.Op == fsnotify.Write || event.Op == fsnotify.Rename) {
@@ -78,6 +78,7 @@ func init() {
 					}
 				}
 			}
+			return
 		}},
 	))
 }
