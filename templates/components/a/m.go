@@ -1,12 +1,13 @@
 package a
 
 import (
+	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/vecty"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pubgo/g/xerror"
 )
 
-func M(data map[string]interface{}, slots ...vecty.ComponentOrHTML) vecty.ComponentOrHTML {
+func M(data js.M, slots ...vecty.ComponentOrHTML) vecty.ComponentOrHTML {
 	t := &_M{Slot: slots}
 	decoder := xerror.PanicErr(mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		TagName:          "prop",

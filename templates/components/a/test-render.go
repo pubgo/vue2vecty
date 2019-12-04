@@ -25,7 +25,7 @@ func (t *_Test) _Render() vecty.ComponentOrHTML {
 	})))), elem.Div(vecty.Markup(vecty.Property("id", "app-7")), elem.OrderedList(func() (e vecty.List) {
 		for __item := range t.groceryList {
 			item := __item
-			e = append(e, components.TodoItem(map[string]interface{}{
+			e = append(e, components.TodoItem(js.M{
 				"Key":  item.id,
 				"Todo": item,
 			}, elem.Div(vecty.Markup(vecty.Property("id", "app")), components.AppNav(), components.AppView(components.AppSidebar(), components.AppContent()))))
@@ -37,7 +37,7 @@ func (t *_Test) _Render() vecty.ComponentOrHTML {
 	})))), elem.OrderedList(components.TodoItem()), elem.Div(vecty.Markup(vecty.Property("id", "app-7")), elem.OrderedList(func() (e vecty.List) {
 		for __item := range t.groceryList {
 			item := __item
-			e = append(e, components.TodoItem(map[string]interface{}{
+			e = append(e, components.TodoItem(js.M{
 				"Key":  item.id,
 				"Todo": item,
 			}))

@@ -3,6 +3,7 @@
 package a
 
 import (
+	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/vecty"
 	"github.com/gopherjs/vecty/elem"
 	"github.com/pubgo/vue2vecty/templates/components"
@@ -12,7 +13,7 @@ func (t *_M) _Render() vecty.ComponentOrHTML {
 	return func() (e vecty.List) {
 		for __key, __value := range t.groceryList {
 			key, value := __key, __value
-			e = append(e, components.TodoItem(map[string]interface{}{
+			e = append(e, components.TodoItem(js.M{
 				".Key2":  "item.id",
 				"Key":    item.id,
 				"Key3":   item.id,
@@ -23,7 +24,7 @@ func (t *_M) _Render() vecty.ComponentOrHTML {
 			}, vecty.Text("sss"), vecty.If(a > 1 && b == 2 && key["sss"]+1 > 0, func() (e vecty.List) {
 				for __k := range t.groceryList() {
 					k := __k
-					e = append(e, components.Cd(map[string]interface{}{
+					e = append(e, components.Cd(js.M{
 						"Hello":   "hello",
 						"Key":     key.id,
 						"OnClick": t.onClick,

@@ -2,6 +2,7 @@
 package components
 
 import (
+	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/vecty"
 	"github.com/mitchellh/mapstructure"
 	"log"
@@ -12,7 +13,7 @@ type _HeeKkk struct {
 	Slot vecty.List
 }
 
-func HeeKkk(data map[string]interface{}, slots ...vecty.ComponentOrHTML) vecty.ComponentOrHTML {
+func HeeKkk(data js.M, slots ...vecty.ComponentOrHTML) vecty.ComponentOrHTML {
 	t := &_HeeKkk{Slot: slots}
 	if data != nil {
 		if err := mapstructure.Decode(data, t); err != nil {

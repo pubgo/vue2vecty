@@ -20,13 +20,13 @@ func CreateStruct(packageName, componentName string) *jen.File {
 	componentName = strings.ReplaceAll(strings.Title(componentName), "-", "")
 	_componentName := "_" + componentName
 
-	file.Func().Id(componentName).Params(jen.Id("data").Map(jen.String()).Interface(), jen.Id("slots ...vecty.ComponentOrHTML")).Id("vecty.ComponentOrHTML").BlockFunc(func(g *jen.Group) {
+	file.Func().Id(componentName).Params(jen.Id("data").Qual(js, "M"), jen.Id("slots ...vecty.ComponentOrHTML")).Id("vecty.ComponentOrHTML").BlockFunc(func(g *jen.Group) {
 		g.Id("t").Op(":=").Op("&").Id(_componentName).Values(jen.Dict{jen.Id("Slot"): jen.Id("slots")})
 		g.IfFunc(func(g *jen.Group) {
 			g.Id("data").Op("!=").Nil().BlockFunc(func(g *jen.Group) {
 				g.IfFunc(func(g *jen.Group) {
-					file.ImportName("github.com/mitchellh/mapstructure", "mapstructure")
-					g.Id("err:=").Qual("github.com/mitchellh/mapstructure", "Decode").Call(jen.Id("data"), jen.Id("t")).Id("; err != nil").BlockFunc(func(g *jen.Group) {
+					file.ImportName(mapstructure, "mapstructure")
+					g.Id("err:=").Qual(mapstructure, "Decode").Call(jen.Id("data"), jen.Id("t")).Id("; err != nil").BlockFunc(func(g *jen.Group) {
 						file.ImportName("log", "log")
 						g.Qual("log", "Fatalf").Call(jen.Lit("%#v"), jen.Id("err"))
 					})
@@ -42,6 +42,9 @@ func CreateStruct(packageName, componentName string) *jen.File {
 	)
 
 	file.Func().Params(jen.Id("t").Op("*").Id(_componentName)).Id("Render").Params().Qual(vectyPackage, "ComponentOrHTML").Block(
+		jen.Qual(vectyPackage, "SetTitle").Call(
+			jen.Id("t").Dot("GetTitle").Call(),
+		),
 		jen.Return(jen.Id("t._Render()")),
 	)
 

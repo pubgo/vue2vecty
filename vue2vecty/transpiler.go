@@ -115,7 +115,8 @@ func (t *Transpiler) transform() (err error) {
 				name = strings.ReplaceAll(strings.Title(name), "-", "")
 				ce = jen.Qual(_appPackage, name).CallFunc(func(g *jen.Group) {
 					if len(token.Attr) > 0 {
-						g.Map(jen.String()).Interface().Values(jen.DictFunc(func(d jen.Dict) {
+						file.ImportName(js, "js")
+						g.Qual(js, "M").Values(jen.DictFunc(func(d jen.Dict) {
 							for _, v := range token.Attr {
 								componentAttr(file, d, nil, v)
 							}
@@ -232,9 +233,6 @@ func (t *Transpiler) transform() (err error) {
 
 	if t.packageName == "routes" || t.packageName == "pages" || t.packageName == "views" {
 		file.Func().Params(jen.Id("t").Id("*"+t.componentName)).Id("_Render").Params().Qual(vectyPackage, "ComponentOrHTML").Block(
-			jen.Qual(vectyPackage, "SetTitle").Call(
-				jen.Id("t").Dot("GetTitle").Call(),
-			),
 			jen.Return(
 				jen.Qual(vectyElemPackage, "Body").Call(elements...),
 			),

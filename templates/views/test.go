@@ -1,12 +1,13 @@
 package views
 
 import (
+	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/vecty"
 	"github.com/mitchellh/mapstructure"
 	"log"
 )
 
-func Test(data map[string]interface{}, slots ...vecty.ComponentOrHTML) vecty.ComponentOrHTML {
+func Test(data js.M, slots ...vecty.ComponentOrHTML) vecty.ComponentOrHTML {
 	t := &_Test{Slot: slots}
 
 	if data != nil {

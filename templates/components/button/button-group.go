@@ -2,12 +2,13 @@
 package button
 
 import (
+	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/vecty"
 	"github.com/mitchellh/mapstructure"
 	"log"
 )
 
-func ButtonGroup(data map[string]interface{}, slots ...vecty.ComponentOrHTML) vecty.ComponentOrHTML {
+func ButtonGroup(data js.M, slots ...vecty.ComponentOrHTML) vecty.ComponentOrHTML {
 	t := &_ButtonGroup{Slot: slots}
 	if data != nil {
 		if err := mapstructure.Decode(data, t); err != nil {
@@ -23,5 +24,6 @@ type _ButtonGroup struct {
 }
 
 func (t *_ButtonGroup) Render() vecty.ComponentOrHTML {
+	vecty.SetTitle(t.GetTitle())
 	return t._Render()
 }
