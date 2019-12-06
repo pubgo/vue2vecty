@@ -9,7 +9,7 @@ import (
 var logger = logs.DebugLog("pkg", "vue2vecty")
 
 func init() {
-	xdi.InitInvoke(func(log *xconfig_log.Log) {
+	xdi.InitInvoke(func(log xconfig_log.Log) {
 		logger = log.With().Str("pkg", "vue2vecty").Logger()
 	})
 }
