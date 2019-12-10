@@ -178,36 +178,43 @@ func exp(file *jen.File, e string) *jen.Statement {
 	case len(e) > 2 && e[0:1] == `"` && e[len(e)-1:] == `"`:
 		return jen.Id(e)
 	case strings.Contains(e, "{{{") && strings.Contains(e, "}}}") && ternaryBrace.MatchString(e): //{{{}}}
-		_d := ternaryBrace.FindStringSubmatch(e)
+		//_d := ternaryBrace.FindStringSubmatch(e)
 		return jen.Qual(vectyPackage, "Markup").Call(jen.Qual(vectyPackage, "UnsafeHTML").CallFunc(func(g *jen.Group) {
-			_exp := exp(file, trim(_d[2]))
-			if _d[1] == "" && _d[3] == "" {
-				g.Add(_exp)
-			}
+			//_exp := exp(file, trim(_d[2]))
+			//if _d[1] == "" && _d[3] == "" {
+			//	g.Add(_exp)
+			//}
 
-			if _d[1] == "" && _d[3] != "" {
-				g.Add(_exp).Op("+").Lit(_d[3])
-			}
+			//if _d[1] != "" && _d[3] != "" {
+			//g.Add(exp(file, _d[1])).Op("+").Add(exp(file, _d[2])).Op("+").Add(exp(file, _d[3]))
+			//}
 
-			if _d[1] != "" && _d[3] == "" {
-				g.Lit(_d[1]).Op("+").Add(_exp)
-			}
+			//if _d[1] == "" && _d[3] != "" {
+			//	g.Add(_exp).Op("+").Lit(exp(file, _d[3]))
+			//}
+
+			//if _d[1] != "" && _d[3] == "" {
+			//	g.Lit(exp(file, _d[1])).Op("+").Add(_exp)
+			//}
+
 		}))
 	case twoBrace.MatchString(e): //{{}}
 		_d := twoBrace.FindStringSubmatch(e)
 		return jen.Qual(vectyPackage, "Text").CallFunc(func(g *jen.Group) {
-			_exp := exp(file, trim(_d[2]))
-			if _d[1] == "" && _d[3] == "" {
-				g.Add(_exp)
-			}
+			g.Add(exp(file, _d[1])).Op("+").Add(exp(file, _d[2])).Op("+").Add(exp(file, _d[3]))
 
-			if _d[1] == "" && _d[3] != "" {
-				g.Add(_exp).Op("+").Lit(_d[3])
-			}
-
-			if _d[1] != "" && _d[3] == "" {
-				g.Lit(_d[1]).Op("+").Add(_exp)
-			}
+			//_exp := exp(file, trim(_d[2]))
+			//if _d[1] == "" && _d[3] == "" {
+			//	g.Add(_exp)
+			//}
+			//
+			//if _d[1] == "" && _d[3] != "" {
+			//	g.Add(_exp).Op("+").Lit(_d[3])
+			//}
+			//
+			//if _d[1] != "" && _d[3] == "" {
+			//	g.Lit(_d[1]).Op("+").Add(_exp)
+			//}
 		})
 	case len(e) > 2 && e[:1] == "[" && e[len(e)-1:] == "]": //[]
 		return nil

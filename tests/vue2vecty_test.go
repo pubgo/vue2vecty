@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/dave/jennifer/jen"
-	"github.com/pubgo/g/logs"
 	"github.com/pubgo/g/xerror"
 	"github.com/pubgo/vue2vecty/vue2vecty"
 	"github.com/pubgo/vue2vecty/xml"
@@ -212,12 +211,14 @@ func TestA5(t *testing.T) {
 
 	//var ternaryBrace = xerror.PanicErr(regexp.Compile(`.*{{{(.+)}}}.*`)).(*regexp.Regexp)
 	var twoBrace = xerror.PanicErr(regexp.Compile(`(.*){{(.+)}}(.*)`)).(*regexp.Regexp)
-	logs.Debug(twoBrace.FindStringSubmatch(`sss{{<li>sss</li>}}sss`))
-	logs.Debug(twoBrace.FindStringSubmatch(`sss{{}}sss`))
-	logs.Debug(twoBrace.MatchString(`sss{{}}sss`))
-	logs.Debug(twoBrace.FindStringSubmatch(`sss{{<li>sss</li>}}`))
-	logs.Debug(twoBrace.FindStringSubmatch(`{{<li>sss</li>}}sss`))
-	logs.Debug(twoBrace.FindStringSubmatch(`{{<li>sss</li>}}`))
+	//logs.Debug(twoBrace.FindStringSubmatch(`sss{{<li>sss</li>}}sss`))
+	//logs.Debug(twoBrace.FindStringSubmatch(`sss{{}}sss`))
+	//logs.Debug(twoBrace.MatchString(`sss{{}}sss`))
+	//logs.Debug(twoBrace.FindStringSubmatch(`sss{{<li>sss</li>}}`))
+	//logs.Debug(twoBrace.FindStringSubmatch(`{{<li>sss</li>}}sss`))
+	for _, v := range twoBrace.FindStringSubmatch(`ss{{<li>sss</li>}} {{<li>sss</li>}} ..{{<li>sss</li>}}lll`) {
+		fmt.Printf("%#v\n",twoBrace.FindStringSubmatch(v))
+	}
 
 	//fmt.Println(jen.Lit("11").Render(os.Stdout))
 	//fmt.Println(jen.Id("11").Render(os.Stdout))
