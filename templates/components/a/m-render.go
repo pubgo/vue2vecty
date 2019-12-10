@@ -43,19 +43,19 @@ func (t *_M) _Render() vecty.ComponentOrHTML {
 					}))
 				}
 				return
-			}()), elem.ListItem(), elem.Input(), vecty.Markup(vecty.UnsafeHTML(t.sss)), elem.Paragraph(vecty.Markup(vecty.Data("click-sss", "click-sss")), vecty.Text("0?world:\"hello\"")), elem.Paragraph(vecty.Markup(vecty.Data("click-sss", "click-sss")), vecty.Text(func() string {
+			}()), elem.ListItem(), elem.Input(), vecty.Markup(vecty.UnsafeHTML()), elem.Paragraph(vecty.Markup(vecty.Data("click-sss", "click-sss")), vecty.Text("0?world:\"hello\"")), elem.Paragraph(vecty.Markup(vecty.Data("click-sss", "click-sss")), func() string {
 				if 0 > 0 {
 					return world
 				} else {
 					return "hello"
 				}
-			}())), elem.Paragraph(vecty.Markup(vecty.Data("click-sss", "click-sss")), vecty.Text(func() string {
+			}()), elem.Paragraph(vecty.Markup(vecty.Data("click-sss", "click-sss")), func() string {
 				if 0 > 0 {
 					return world
 				} else {
 					return "hello"
 				}
-			}()))))
+			}())))
 		}
 		return
 	}()
