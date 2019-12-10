@@ -1,5 +1,7 @@
 // This file was created with https://github.com/pubgo/vue2vecty. DO NOT EDIT.
 // using https://jsgo.io/pubgo/vue2vecty
+// +build js wasm
+
 package views
 
 import (

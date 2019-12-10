@@ -3,6 +3,7 @@ package cmds
 import (
 	"github.com/pubgo/g/xcmds"
 	"github.com/pubgo/g/xerror"
+	"github.com/pubgo/vue2vecty/cmds/v2v"
 	"github.com/pubgo/vue2vecty/version"
 )
 
@@ -15,4 +16,8 @@ var Execute = xcmds.Init(EnvPrefix, func(cmd *xcmds.Command) {
 
 	cmd.Use = Service
 	cmd.Version = version.Version
+
+	v2v.Version()
+	v2v.Build()
+	v2v.Component()
 })

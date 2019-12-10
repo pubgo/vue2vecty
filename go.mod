@@ -13,8 +13,7 @@ require (
 	github.com/gopherjs/vecty v0.0.0-20190701174234-2b6fc20f8913
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/mitchellh/mapstructure v1.1.2
-	github.com/pubgo/g v0.2.9
-	github.com/rs/zerolog v1.14.3
+	github.com/pubgo/g v0.2.12
 	github.com/tulir/gopher-ace v0.0.0-20170210071804-4ca2d59510bd
 	github.com/vincent-petithory/dataurl v0.0.0-20191104211930-d1553a71de50
 	honnef.co/go/js/dom v0.0.0-20190526011328-ebc4cf92d81f

@@ -1,6 +1,6 @@
 // +build linux windows darwin
 
-package cmds
+package v2v
 
 import (
 	"github.com/fsnotify/fsnotify"
@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-func init() {
+func Build() {
 	var templateHome = "templates"
 	var isMonitor = false
 	var transpiler = func(path string) (err error) {

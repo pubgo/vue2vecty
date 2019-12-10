@@ -1,4 +1,4 @@
-package cmds
+package v2v
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"runtime"
 )
 
-func init() {
+func Version() {
 	xcmds.AddCommand(&xcmds.Command{
 		Use:     "version",
 		Aliases: []string{"v"},

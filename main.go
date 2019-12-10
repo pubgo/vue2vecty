@@ -3,9 +3,10 @@
 package main
 
 import (
+	"github.com/pubgo/g/xerror"
 	"github.com/pubgo/vue2vecty/cmds"
 )
 
 func main() {
-	cmds.Execute()
+	xerror.Exit(cmds.Execute(), "cmd error")
 }

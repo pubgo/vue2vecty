@@ -51,6 +51,7 @@ func (t *Transpiler) transform() (err error) {
 	file := jen.NewFile(t.packageName)
 	file.PackageComment("This file was created with https://github.com/pubgo/vue2vecty. DO NOT EDIT.")
 	file.PackageComment("using https://jsgo.io/pubgo/vue2vecty")
+	file.PackageComment("// +build js wasm\n")
 	file.ImportNames(map[string]string{
 		vectyPackage:      "vecty",
 		vectyElemPackage:  "elem",
@@ -86,7 +87,7 @@ func (t *Transpiler) transform() (err error) {
 
 		token, err := decoder.Token()
 		if err == io.EOF || token == nil {
-			return nil, xerror.Errs.Done
+			return nil, xerror.ErrDone
 		}
 		xerror.Panic(err)
 
@@ -126,7 +127,7 @@ func (t *Transpiler) transform() (err error) {
 					for {
 						c, err := _transform(decoder)
 						if err != nil {
-							if err == xerror.Errs.Done {
+							if err == xerror.ErrDone {
 								break
 							}
 							xerror.Panic(err)
@@ -149,7 +150,7 @@ func (t *Transpiler) transform() (err error) {
 					for {
 						c, err := _transform(decoder)
 						if err != nil {
-							if err == xerror.Errs.Done {
+							if err == xerror.ErrDone {
 								break
 							}
 							xerror.Panic(err)
@@ -208,7 +209,7 @@ func (t *Transpiler) transform() (err error) {
 			}
 			return _code, nil
 		case xml.EndElement:
-			return nil, xerror.Errs.Done
+			return nil, xerror.ErrDone
 		case xml.Comment:
 			return nil, nil
 		default:
@@ -220,7 +221,7 @@ func (t *Transpiler) transform() (err error) {
 	for {
 		c, err := _transform(decoder)
 		if err != nil {
-			if err == io.EOF || err == xerror.Errs.Done {
+			if err == io.EOF || err == xerror.ErrDone {
 				break
 			}
 			xerror.Panic(err)

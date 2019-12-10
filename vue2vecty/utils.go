@@ -12,7 +12,7 @@ import (
 
 var trim = strings.TrimSpace
 
-func CreateStruct(packageName, componentName string) *jen.File {
+func CreateComponent(packageName, componentName string) *jen.File {
 	file := jen.NewFile(packageName)
 	file.PackageComment("This file was created with https://github.com/pubgo/vue2vecty")
 	file.ImportName(vectyPackage, "vecty")
