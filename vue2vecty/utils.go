@@ -12,49 +12,44 @@ import (
 
 var trim = strings.TrimSpace
 
-func CreateComponent(packageName, componentName string) *jen.File {
-	file := jen.NewFile(packageName)
-	file.PackageComment("This file was created with https://github.com/pubgo/vue2vecty")
-	file.ImportName(vectyPackage, "vecty")
+var ternaryReg = xerror.PanicErr(regexp.Compile(`(.+)\?(.+):(.+)`)).(*regexp.Regexp)
+var ternaryBraceReg = xerror.PanicErr(regexp.Compile(`(.*){{{(.+)}}}(.*)`)).(*regexp.Regexp)
+var twoBraceReg = xerror.PanicErr(regexp.Compile(`(.*){{(.+)}}(.*)`)).(*regexp.Regexp)
+var forReg = xerror.PanicErr(regexp.Compile(`,|\s+in\s+`)).(*regexp.Regexp)
 
-	componentName = strings.ReplaceAll(strings.Title(componentName), "-", "")
-	_componentName := "_" + componentName
+func braceExp(file *jen.File, e string) *jen.Statement {
+	e = trim(e)
 
-	file.Func().Id(componentName).Params(jen.Id("data").Qual(js, "M"), jen.Id("slots ...vecty.ComponentOrHTML")).Id("vecty.ComponentOrHTML").BlockFunc(func(g *jen.Group) {
-		g.Id("t").Op(":=").Op("&").Id(_componentName).Values(jen.Dict{jen.Id("Slot"): jen.Id("slots")})
-		g.IfFunc(func(g *jen.Group) {
-			g.Id("data").Op("!=").Nil().BlockFunc(func(g *jen.Group) {
-				g.IfFunc(func(g *jen.Group) {
-					file.ImportName(mapstructure, "mapstructure")
-					g.Id("err:=").Qual(mapstructure, "Decode").Call(jen.Id("data"), jen.Id("t")).Id("; err != nil").BlockFunc(func(g *jen.Group) {
-						file.ImportName("log", "log")
-						g.Qual("log", "Fatalf").Call(jen.Lit("%#v"), jen.Id("err"))
-					})
-				})
-			})
-		})
-		g.Return(jen.Id("t"))
-	})
+	var _braceExp = func(_d []string) *jen.Statement {
+		x1, x2, x3 := _d[1], _d[2], _d[3]
+		_brace := jen.Empty()
+		if _x := braceExp(file, x1); _x != nil {
+			_brace = _brace.Add(_x).Op("+")
+		}
 
-	file.Type().Id(_componentName).Struct(
-		jen.Qual(vectyPackage, "Core"),
-		jen.Id("Slot").Qual(vectyPackage, "List"),
-	)
+		if _x := exp(file, x2); _x != nil {
+			_brace = _brace.Add(_x)
+		}
 
-	file.Func().Params(jen.Id("t").Op("*").Id(_componentName)).Id("Render").Params().Qual(vectyPackage, "ComponentOrHTML").Block(
-		jen.Qual(vectyPackage, "SetTitle").Call(
-			jen.Id("t").Dot("GetTitle").Call(),
-		),
-		jen.Return(jen.Id("t._Render()")),
-	)
+		if _x := braceExp(file, x3); _x != nil {
+			_brace = _brace.Op("+").Add(_x)
+		}
 
-	return file
+		return _brace
+	}
+
+	switch {
+	case e == "":
+		return nil
+	case strings.Contains(e, "{{{") && strings.Contains(e, "}}}") && ternaryBraceReg.MatchString(e):
+		return _braceExp(ternaryBraceReg.FindStringSubmatch(e))
+	case strings.Contains(e, "{{") && strings.Contains(e, "}}") && twoBraceReg.MatchString(e):
+		return _braceExp(twoBraceReg.FindStringSubmatch(e))
+	default:
+		return jen.Lit(e)
+	}
 }
 
-var ternaryReg = xerror.PanicErr(regexp.Compile(`(.+)\?(.+):(.+)`)).(*regexp.Regexp)
-var ternaryBrace = xerror.PanicErr(regexp.Compile(`(.*){{{(.+)}}}(.*)`)).(*regexp.Regexp)
-var twoBrace = xerror.PanicErr(regexp.Compile(`(.*){{(.+)}}(.*)`)).(*regexp.Regexp)
-var forReg = xerror.PanicErr(regexp.Compile(`,|\s+in\s+`)).(*regexp.Regexp)
 var forExp = func(file *jen.File, child *jen.Statement, value string) *jen.Statement {
 	xerror.PanicT(value == "", "params is zero")
 
@@ -104,11 +99,7 @@ var onExp = func(v string) *jen.Statement {
 		return jen.Id("t." + v)
 	}
 }
-
-//var IfExp string
-//var OptExp string
-
-func styleExp(file *jen.File, g *jen.Group, e string) {
+var styleExp = func(file *jen.File, g *jen.Group, e string) {
 	e = trim(e)
 
 	switch {
@@ -129,8 +120,7 @@ func styleExp(file *jen.File, g *jen.Group, e string) {
 		return
 	}
 }
-
-func classExp(file *jen.File, g *jen.Group, e string) {
+var classExp = func(file *jen.File, g *jen.Group, e string) {
 	e = trim(e)
 
 	switch {
@@ -165,6 +155,9 @@ func classExp(file *jen.File, g *jen.Group, e string) {
 	}
 }
 
+//var IfExp string
+//var OptExp string
+
 func exp(file *jen.File, e string) *jen.Statement {
 	e = trim(e)
 
@@ -177,75 +170,12 @@ func exp(file *jen.File, e string) *jen.Statement {
 		return exp(file, fmt.Sprintf(`"%s"`, e[1:len(e)-1]))
 	case len(e) > 2 && e[0:1] == `"` && e[len(e)-1:] == `"`:
 		return jen.Id(e)
-	case strings.Contains(e, "{{{") && strings.Contains(e, "}}}") && ternaryBrace.MatchString(e): //{{{}}}
-		//_d := ternaryBrace.FindStringSubmatch(e)
-		return jen.Qual(vectyPackage, "Markup").Call(jen.Qual(vectyPackage, "UnsafeHTML").CallFunc(func(g *jen.Group) {
-			//_exp := exp(file, trim(_d[2]))
-			//if _d[1] == "" && _d[3] == "" {
-			//	g.Add(_exp)
-			//}
-
-			//if _d[1] != "" && _d[3] != "" {
-			//g.Add(exp(file, _d[1])).Op("+").Add(exp(file, _d[2])).Op("+").Add(exp(file, _d[3]))
-			//}
-
-			//if _d[1] == "" && _d[3] != "" {
-			//	g.Add(_exp).Op("+").Lit(exp(file, _d[3]))
-			//}
-
-			//if _d[1] != "" && _d[3] == "" {
-			//	g.Lit(exp(file, _d[1])).Op("+").Add(_exp)
-			//}
-
-		}))
-	case twoBrace.MatchString(e): //{{}}
-		_d := twoBrace.FindStringSubmatch(e)
-		fmt.Println(_d)
-		var _j *jen.Statement
-		if v := _d[1]; v != "" {
-			if _exp := exp(file, v); _exp != nil {
-				_j = jen.Add(_exp).Op("+")
-			}
-		}
-
-		if v := _d[2]; v != "" {
-			if _exp := exp(file, v); _exp != nil {
-				if _j==nil{
-					_j=_exp
-				}else{
-					_j = _j.Add(_exp)
-				}
-			}
-		}
-
-		if v := _d[3]; v != "" {
-			if _exp := exp(file, v); _exp != nil {
-				_j = _j.Op("+").Add(_exp)
-			}
-		}
-		return _j
-		//return jen.Qual(vectyPackage, "Text").CallFunc(func(g *jen.Group) {
-		//	g.Add(exp(file, _d[1])).Op("+").Add(exp(file, _d[2])).Op("+").Add(exp(file, _d[3]))
-
-		//_exp := exp(file, trim(_d[2]))
-		//if _d[1] == "" && _d[3] == "" {
-		//	g.Add(_exp)
-		//}
-		//
-		//if _d[1] == "" && _d[3] != "" {
-		//	g.Add(_exp).Op("+").Lit(_d[3])
-		//}
-		//
-		//if _d[1] != "" && _d[3] == "" {
-		//	g.Lit(_d[1]).Op("+").Add(_exp)
-		//}
-		//})
-	case len(e) > 2 && e[:1] == "[" && e[len(e)-1:] == "]": //[]
-		return nil
-	case len(e) > 2 && e[:1] == "{" && e[len(e)-1:] == "}": // {}
-		return nil
-	case len(strings.Split(e, "?:")) == 2:
-		_s := strings.Split(e, "?:")
+	case strings.Contains(e, "{{{") && strings.Contains(e, "}}}") && ternaryBraceReg.MatchString(e):
+		return jen.Qual(vectyPackage, "Markup").Call(jen.Qual(vectyPackage, "UnsafeHTML").Call(braceExp(file, e)))
+	case strings.Contains(e, "{{") && strings.Contains(e, "}}") && twoBraceReg.MatchString(e):
+		return jen.Qual(vectyPackage, "Text").Call(braceExp(file, e))
+	case len(strings.SplitN(e, "||", 2)) == 2:
+		_s := strings.SplitN(e, "||", 2)
 		s0 := trim(_s[0])
 		s1 := trim(_s[1])
 		return jen.Func().Params().String().BlockFunc(func(g *jen.Group) {
@@ -288,7 +218,7 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 			return
 		}
 
-		if ternaryBrace.MatchString(key) || twoBrace.MatchString(key) {
+		if ternaryBraceReg.MatchString(key) || twoBraceReg.MatchString(key) {
 			if _exp := exp(file, key); _exp != nil {
 				file.ImportName(vectyPackage, "vecty")
 				if d != nil {
@@ -431,8 +361,8 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 		}
 
 		g.Qual(vectyPackage, "Class").CallFunc(func(g *jen.Group) {
-			if twoBrace.MatchString(value) {
-				_d := twoBrace.FindStringSubmatch(value)
+			if twoBraceReg.MatchString(value) {
+				_d := twoBraceReg.FindStringSubmatch(value)
 				g.Add(exp(file, trim(_d[2])))
 
 				for _, c := range strings.Split(_d[1]+" "+_d[3], " ") {
@@ -478,4 +408,43 @@ func componentAttr(file *jen.File, d jen.Dict, g *jen.Group, attr xml.Attr) {
 		}
 	}
 
+}
+
+func CreateComponent(packageName, componentName string) *jen.File {
+	file := jen.NewFile(packageName)
+	file.PackageComment("This file was created with https://github.com/pubgo/vue2vecty")
+	file.ImportName(vectyPackage, "vecty")
+
+	componentName = strings.ReplaceAll(strings.Title(componentName), "-", "")
+	_componentName := "_" + componentName
+
+	file.Func().Id(componentName).Params(jen.Id("data").Qual(js, "M"), jen.Id("slots ...vecty.ComponentOrHTML")).Id("vecty.ComponentOrHTML").BlockFunc(func(g *jen.Group) {
+		g.Id("t").Op(":=").Op("&").Id(_componentName).Values(jen.Dict{jen.Id("Slot"): jen.Id("slots")})
+		g.IfFunc(func(g *jen.Group) {
+			g.Id("data").Op("!=").Nil().BlockFunc(func(g *jen.Group) {
+				g.IfFunc(func(g *jen.Group) {
+					file.ImportName(mapstructure, "mapstructure")
+					g.Id("err:=").Qual(mapstructure, "Decode").Call(jen.Id("data"), jen.Id("t")).Id("; err != nil").BlockFunc(func(g *jen.Group) {
+						file.ImportName("log", "log")
+						g.Qual("log", "Fatalf").Call(jen.Lit("%#v"), jen.Id("err"))
+					})
+				})
+			})
+		})
+		g.Return(jen.Id("t"))
+	})
+
+	file.Type().Id(_componentName).Struct(
+		jen.Qual(vectyPackage, "Core"),
+		jen.Id("Slot").Qual(vectyPackage, "List"),
+	)
+
+	file.Func().Params(jen.Id("t").Op("*").Id(_componentName)).Id("Render").Params().Qual(vectyPackage, "ComponentOrHTML").Block(
+		jen.Qual(vectyPackage, "SetTitle").Call(
+			jen.Id("t").Dot("GetTitle").Call(),
+		),
+		jen.Return(jen.Id("t._Render()")),
+	)
+
+	return file
 }
