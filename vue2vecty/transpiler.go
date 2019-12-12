@@ -3,6 +3,7 @@ package vue2vecty
 import (
 	"bytes"
 	"fmt"
+	"github.com/PuerkitoBio/goquery"
 	"github.com/pubgo/g/xerror"
 	"github.com/pubgo/vue2vecty/xml"
 	"io"
@@ -60,20 +61,20 @@ func (t *Transpiler) transform() (err error) {
 	})
 
 	// 处理import
-	/*
+	{
 		doc, err := goquery.NewDocumentFromReader(strings.NewReader(t.html))
-		xerror.Panic(err)
-		for _, n := range doc.Find("import").Nodes {
-			for _, attr := range n.Attr {
-				file.ImportName(attr.Val, attr.Key)
+		xerror.PanicM(err, "html parser error")
+		_import := doc.Find("import")
+		for _, n := range strings.Split(_import.Text(), "\n") {
+			if _n := strings.Split(n, "="); len(_n) == 2 {
+				file.ImportAlias(trim(_n[1]), trim(_n[0]))
 			}
 		}
-		doc.Find("import").Remove()
-
+		_import.Remove()
 		t.html = xerror.PanicErr(doc.Html()).(string)
 		t.html = strings.ReplaceAll(t.html, `<html><head></head><body>`, "")
 		t.html = strings.ReplaceAll(t.html, `</body></html>`, "")
-	*/
+	}
 
 	decoder := xml.NewDecoder(bytes.NewBufferString(t.html))
 	decoder.Strict = false

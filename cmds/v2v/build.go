@@ -5,7 +5,6 @@ package v2v
 import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/gobuffalo/envy"
-	"github.com/pubgo/g/errors"
 	"github.com/pubgo/g/xcmds"
 	"github.com/pubgo/g/xerror"
 	"github.com/pubgo/vue2vecty/vue2vecty"
@@ -32,7 +31,7 @@ func Build() {
 			xerror.PanicErr(envy.CurrentModule()).(string)+"/"+templateHome,
 			"_"+strings.ReplaceAll(strings.Title(name), "-", ""),
 			_compo)
-		errors.Panic(ioutil.WriteFile(filepath.Join(_dir, name+"-render.go"), []byte(_c.Code()), 0644))
+		xerror.Panic(ioutil.WriteFile(filepath.Join(_dir, name+"-render.go"), []byte(_c.Code()), 0644))
 		return
 	}
 	xcmds.AddCommand(func(cmd *xcmds.Command) *xcmds.Command {
